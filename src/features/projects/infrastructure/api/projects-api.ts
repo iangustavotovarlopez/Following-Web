@@ -20,8 +20,8 @@ export interface Project {
   id: number;
   code: string;
   name: string;
-  company: { id: number; name: string; isActive: boolean };
-  state: ProjectState;
+  company: { id: number };
+  state: { id: number };
 }
 
 export interface ProjectQuery extends PaginationQuery {

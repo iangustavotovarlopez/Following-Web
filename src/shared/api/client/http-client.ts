@@ -11,10 +11,10 @@ export class HttpClient {
 
   constructor(options: HttpClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? '/following/api').replace(/\/$/, '');
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   }
 
-  async get<T>(path: string, query?: Record<string, unknown>): Promise<T | null> {
+  async get<T>(path: string, query?: object): Promise<T | null> {
     return this.request<T>(path, { method: 'GET', query });
   }
 
@@ -35,7 +35,7 @@ export class HttpClient {
     options: {
       method: string;
       body?: unknown;
-      query?: Record<string, unknown>;
+      query?: object;
     },
   ): Promise<T | null> {
     const origin =

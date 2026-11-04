@@ -30,7 +30,10 @@ export interface Company {
   code: string;
   name: string;
   description?: string;
-  state: CompanyState;
+  state: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface CompanyQuery extends PaginationQuery {
