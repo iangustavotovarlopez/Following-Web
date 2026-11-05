@@ -7,7 +7,7 @@ import {
   type CompanyState,
   type CompanyStatePatchRequest,
 } from '../../infrastructure/api';
-import { ApiSection, type TableColumn } from '../../../../shared/components/api-section';
+import { ActiveBadge, ApiSection, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
@@ -34,7 +34,10 @@ export function CompaniesSection() {
     {
       key: 'state',
       label: 'Estado',
-      render: (item) => item.state.name,
+      render: (item) => {
+        const state = states.find((candidate) => candidate.id === item.state.id);
+        return state ? <ActiveBadge active={state.isActive} /> : item.state.name;
+      },
     },
   ];
   const [form, setForm] = useState<CompanyCreateRequest>({

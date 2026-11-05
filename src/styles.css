@@ -430,18 +430,6 @@ tbody tr:last-child td {
   background: #fff1d8;
 }
 
-.badge.state-active {
-  border: 1px solid #2eae67;
-  color: #176f45;
-  background: transparent;
-}
-
-.badge.state-inactive {
-  border: 1px solid #d59a3a;
-  color: #7d4d18;
-  background: transparent;
-}
-
 .empty-state {
   padding: 32px 24px;
   color: #728096;
