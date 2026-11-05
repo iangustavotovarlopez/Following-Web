@@ -16,6 +16,7 @@ import {
 } from '../../../collaborators/infrastructure/api';
 import {
   projectsApi,
+  type Planning,
   type Project,
 } from '../../../projects/infrastructure/api';
 import {
@@ -44,6 +45,7 @@ export function AdvancedRelationsSection() {
   const [specialities, setSpecialities] = useState<Speciality[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [plannings, setPlannings] = useState<Planning[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [levels, setLevels] = useState<SkillLevel[]>([]);
@@ -56,6 +58,9 @@ export function AdvancedRelationsSection() {
   const [collaboratorId, setCollaboratorId] = useState<Id>();
   const [projectId, setProjectId] = useState<Id>();
   const [periodId, setPeriodId] = useState<Id>();
+  const [planningId, setPlanningId] = useState<Id>();
+  const [planningSubperiodId, setPlanningSubperiodId] = useState<Id>();
+  const [planningSectionId, setPlanningSectionId] = useState<Id>();
   const [skillId, setSkillId] = useState<Id>();
   const [levelId, setLevelId] = useState<Id>();
 
@@ -116,6 +121,25 @@ export function AdvancedRelationsSection() {
       .then((response) => setPeriods(response?.content ?? []));
   }, [projectId, projects]);
 
+  useEffect(() => {
+    setPlannings([]);
+    setPlanningId(undefined);
+    setPlanningSubperiodId(undefined);
+    setPlanningSectionId(undefined);
+    if (!projectId) return;
+    projectsApi.listPlanning(projectId).then((response) => setPlannings(response ?? []));
+  }, [projectId]);
+
+  const selectedPlanning = plannings.find((item) => item.id === planningId);
+  const planningSubperiods = selectedPlanning?.periods.flatMap((item) => item.subperiods) ?? [];
+  const planningSections = planningSubperiods.flatMap((item) => item.sections);
+
+  function refreshPlannings() {
+    if (projectId) {
+      projectsApi.listPlanning(projectId).then((response) => setPlannings(response ?? []));
+    }
+  }
+
   return (
     <section className="resource-section operations-section">
       <div className="section-heading">
@@ -135,6 +159,16 @@ export function AdvancedRelationsSection() {
         <SelectField label="Collaborator" value={collaboratorId ?? ''} options={optionsOf(collaborators, (item) => item.name)} onChange={(e) => setCollaboratorId(idOf(e.target.value))} />
         <SelectField label="Project" value={projectId ?? ''} options={optionsOf(projects, (item) => item.name)} onChange={(e) => setProjectId(idOf(e.target.value))} />
         <SelectField label="Period" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(e) => setPeriodId(idOf(e.target.value))} />
+        <SelectField label="Planning" value={planningId ?? ''} options={optionsOf(plannings, (item) => item.name)} onChange={(e) => {
+          setPlanningId(idOf(e.target.value));
+          setPlanningSubperiodId(undefined);
+          setPlanningSectionId(undefined);
+        }} />
+        <SelectField label="Planning subperiod" value={planningSubperiodId ?? ''} options={optionsOf(planningSubperiods, (item) => item.name)} onChange={(e) => {
+          setPlanningSubperiodId(idOf(e.target.value));
+          setPlanningSectionId(undefined);
+        }} />
+        <SelectField label="Planning section" value={planningSectionId ?? ''} options={optionsOf(planningSections, (item) => item.name)} onChange={(e) => setPlanningSectionId(idOf(e.target.value))} />
         <SelectField label="Skill" value={skillId ?? ''} options={optionsOf(skills, (item) => item.name)} onChange={(e) => setSkillId(idOf(e.target.value))} />
         <SelectField label="Level" value={levelId ?? ''} options={optionsOf(levels, (item) => item.name)} onChange={(e) => setLevelId(idOf(e.target.value))} />
       </div>
@@ -142,7 +176,9 @@ export function AdvancedRelationsSection() {
       <div className="operation-grid">
         <CollaboratorSpecialityOperation collaboratorId={collaboratorId} specialityId={specialityId} />
         <CollaboratorSkillOperation collaboratorId={collaboratorId} specialityId={specialityId} skillId={skillId} levelId={levelId} />
-        <PlanningOperation projectId={projectId} periodId={periodId} />
+        <PlanningOperation projectId={projectId} periodId={periodId} onCreated={refreshPlannings} />
+        <PlanningPeriodOperation projectId={projectId} planningId={planningId} periods={periods} onCreated={refreshPlannings} />
+        <PlanningSectionOperation projectId={projectId} planningId={planningId} subperiodId={planningSubperiodId} sections={planningSections} onCreated={refreshPlannings} />
         <ServiceEnvironmentOperation environments={environments} />
         <ServiceMetadataOperation metadata={metadata} />
       </div>
@@ -194,17 +230,83 @@ function CollaboratorSkillOperation({ collaboratorId, specialityId, skillId, lev
   );
 }
 
-function PlanningOperation({ projectId, periodId }: { projectId: Id; periodId: Id }) {
+function PlanningOperation({ projectId, periodId, onCreated }: { projectId: Id; periodId: Id; onCreated: () => void }) {
   const action = useApiAction<unknown>();
   const [name, setName] = useState('');
   return (
     <OperationCard title="Create project planning" description="Crea una planeación con un periodo seleccionado.">
       <Field label="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
       <button className="button primary" onClick={() => {
-        if (projectId && periodId && name.trim()) void action.execute(() => projectsApi.createPlanning(projectId, { name, period: { id: periodId } }));
+        if (projectId && periodId && name.trim()) {
+          void action.execute(async () => {
+            const result = await projectsApi.createPlanning(projectId, { name, period: { id: periodId } });
+            onCreated();
+            return result;
+          });
+        }
       }} disabled={action.loading || !projectId || !periodId || !name.trim()}>
         {action.loading ? 'Guardando...' : 'Crear planeación'}
       </button>
+      <ActionMessage error={action.error} result={action.result} />
+    </OperationCard>
+  );
+}
+
+function PlanningPeriodOperation({ projectId, planningId, periods, onCreated }: {
+  projectId: Id;
+  planningId: Id;
+  periods: Period[];
+  onCreated: () => void;
+}) {
+  const action = useApiAction<unknown>();
+  const [periodId, setPeriodId] = useState<Id>();
+  const [isAdditional, setIsAdditional] = useState(false);
+  return (
+    <OperationCard title="Add planning period" description="Asocia un periodo existente a la planeación seleccionada.">
+      <form className="operation-form" onSubmit={(event) => {
+        event.preventDefault();
+        if (!projectId || !planningId || !periodId) return;
+        void action.execute(async () => {
+          const result = await projectsApi.addPlanningPeriod(projectId, planningId, {
+            period: { id: periodId },
+            isAdditional,
+          });
+          onCreated();
+          return result;
+        });
+      }}>
+        <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(event) => setPeriodId(idOf(event.target.value))} required />
+        <SelectField label="Adicional" value={String(isAdditional)} options={[{ value: 'false', label: 'No' }, { value: 'true', label: 'Sí' }]} onChange={(event) => setIsAdditional(event.target.value === 'true')} />
+        <SubmitButton loading={action.loading} disabled={!projectId || !planningId || !periodId}>Agregar periodo</SubmitButton>
+      </form>
+      <ActionMessage error={action.error} result={action.result} />
+    </OperationCard>
+  );
+}
+
+function PlanningSectionOperation({ projectId, planningId, subperiodId, sections, onCreated }: {
+  projectId: Id;
+  planningId: Id;
+  subperiodId: Id;
+  sections: Planning['periods'][number]['subperiods'][number]['sections'];
+  onCreated: () => void;
+}) {
+  const action = useApiAction<unknown>();
+  const [sectionId, setSectionId] = useState<Id>();
+  return (
+    <OperationCard title="Add planning section" description="Asocia una sección al subperiodo seleccionado.">
+      <form className="operation-form" onSubmit={(event) => {
+        event.preventDefault();
+        if (!projectId || !planningId || !subperiodId || !sectionId) return;
+        void action.execute(async () => {
+          const result = await projectsApi.addPlanningSection(projectId, planningId, { subperiodId, sectionId });
+          onCreated();
+          return result;
+        });
+      }}>
+        <SelectField label="Sección" value={sectionId ?? ''} options={optionsOf(sections, (item) => item.name)} onChange={(event) => setSectionId(idOf(event.target.value))} required />
+        <SubmitButton loading={action.loading} disabled={!projectId || !planningId || !subperiodId || !sectionId}>Agregar sección</SubmitButton>
+      </form>
       <ActionMessage error={action.error} result={action.result} />
     </OperationCard>
   );

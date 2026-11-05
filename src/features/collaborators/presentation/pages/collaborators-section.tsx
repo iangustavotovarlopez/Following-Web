@@ -32,6 +32,20 @@ const columns: TableColumn<Collaborator>[] = [
   { key: 'company', label: 'Compañía', render: (item) => item.company.name },
   { key: 'state', label: 'Estado', render: (item) => <ActiveBadge active={item.state.isActive} /> },
   { key: 'hireDate', label: 'Contratación', render: (item) => item.hireDate },
+  {
+    key: 'actions',
+    label: 'Acciones',
+    render: (item) => (
+      <a
+        className="button primary details-link"
+        href={`/?collaboratorId=${item.id}&collaboratorCode=${encodeURIComponent(item.code)}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Ver detalles
+      </a>
+    ),
+  },
 ];
 
 const initialForm: CreateCollaboratorRequest = {
@@ -58,6 +72,9 @@ export function CollaboratorsSection() {
   const [form, setForm] = useState<CreateCollaboratorRequest>(initialForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [stateName, setStateName] = useState('');
+  const [stateSaving, setStateSaving] = useState(false);
+  const [stateError, setStateError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -84,21 +101,43 @@ export function CollaboratorsSection() {
     }
   }
 
+  async function submitState(event: FormEvent) {
+    event.preventDefault();
+    setStateSaving(true);
+    setStateError(null);
+    try {
+      const state = await collaboratorsApi.createState({ name: stateName });
+      if (state) setStates((current) => [...current, state]);
+      setStateName('');
+    } catch (cause) {
+      setStateError(cause instanceof Error ? cause.message : 'No se pudo crear el estado');
+    } finally {
+      setStateSaving(false);
+    }
+  }
+
   const formView = (
-    <form className="inline-form" onSubmit={submit}>
-      <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-      <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-      <Field label="Segundo nombre" value={form.secondName ?? ''} onChange={(e) => setForm({ ...form, secondName: e.target.value })} />
-      <Field label="Tercer nombre" value={form.thirdName ?? ''} onChange={(e) => setForm({ ...form, thirdName: e.target.value })} />
-      <Field label="Apellido" value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} required />
-      <Field label="Segundo apellido" value={form.secondLastname ?? ''} onChange={(e) => setForm({ ...form, secondLastname: e.target.value })} />
-      <Field label="Tercer apellido" value={form.thirdLastname ?? ''} onChange={(e) => setForm({ ...form, thirdLastname: e.target.value })} />
-      <Field label="Hire date" type="date" value={form.hireDate} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} required />
-      <SelectField label="Compañía" value={form.company.id} options={companies.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, company: { id: Number(e.target.value) } })} required />
-      <SelectField label="Estado" value={form.state.id} options={states.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, state: { id: Number(e.target.value) } })} required />
-      <SubmitButton loading={saving}>Crear</SubmitButton>
-      {formError && <span className="form-error">{formError}</span>}
-    </form>
+    <div className="form-stack">
+      <form className="inline-form" onSubmit={submit}>
+        <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
+        <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        <Field label="Segundo nombre" value={form.secondName ?? ''} onChange={(e) => setForm({ ...form, secondName: e.target.value })} />
+        <Field label="Tercer nombre" value={form.thirdName ?? ''} onChange={(e) => setForm({ ...form, thirdName: e.target.value })} />
+        <Field label="Apellido" value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} required />
+        <Field label="Segundo apellido" value={form.secondLastname ?? ''} onChange={(e) => setForm({ ...form, secondLastname: e.target.value })} />
+        <Field label="Tercer apellido" value={form.thirdLastname ?? ''} onChange={(e) => setForm({ ...form, thirdLastname: e.target.value })} />
+        <Field label="Hire date" type="date" value={form.hireDate} onChange={(e) => setForm({ ...form, hireDate: e.target.value })} required />
+        <SelectField label="Compañía" value={form.company.id} options={companies.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, company: { id: Number(e.target.value) } })} required />
+        <SelectField label="Estado" value={form.state.id} options={states.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, state: { id: Number(e.target.value) } })} required />
+        <SubmitButton loading={saving}>Crear colaborador</SubmitButton>
+        {formError && <span className="form-error">{formError}</span>}
+      </form>
+      <form className="inline-form" onSubmit={submitState}>
+        <Field label="Nuevo estado" value={stateName} onChange={(e) => setStateName(e.target.value)} required />
+        <SubmitButton loading={stateSaving}>Crear estado</SubmitButton>
+        {stateError && <span className="form-error">{stateError}</span>}
+      </form>
+    </div>
   );
 
   return (

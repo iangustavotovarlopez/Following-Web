@@ -11,8 +11,16 @@ export interface CollaboratorCatalogItem {
   isActive: boolean;
 }
 
-export interface CollaboratorRole extends CollaboratorCatalogItem {}
+export interface CollaboratorRole extends CollaboratorCatalogItem {
+  code: string;
+}
 export interface CollaboratorState extends CollaboratorCatalogItem {}
+
+export interface CollaboratorRoleRelation {
+  id: number;
+  role: { id: number };
+  isActive: boolean;
+}
 
 export interface Collaborator {
   id: number;
@@ -80,6 +88,10 @@ export interface CreateCollaboratorSpecialityRequest {
   isActive?: boolean;
 }
 
+export interface CreateCollaboratorRoleRelationRequest {
+  role: { id: number };
+}
+
 export interface PatchCollaboratorSpecialitySkillRequest {
   level: { id: number };
   isActive?: boolean;
@@ -95,7 +107,7 @@ export class CollaboratorsApi {
     );
   }
 
-  createRole(body: { name: string }) {
+  createRole(body: { code: string; name: string }) {
     return this.client.post<CollaboratorRole>('/collaborators/v0/roles', body);
   }
 
@@ -119,6 +131,23 @@ export class CollaboratorsApi {
 
   createCollaborator(body: CreateCollaboratorRequest) {
     return this.client.post<Collaborator>('/collaborators/v0/collaborators', body);
+  }
+
+  listRoleRelations(collaboratorId: number, query: PaginationQuery = {}) {
+    return this.client.get<PageResponse<CollaboratorRoleRelation>>(
+      `/collaborators/v0/collaborators/${collaboratorId}/roles`,
+      query,
+    );
+  }
+
+  createRoleRelation(
+    collaboratorId: number,
+    body: CreateCollaboratorRoleRelationRequest,
+  ) {
+    return this.client.post<CollaboratorRoleRelation>(
+      `/collaborators/v0/collaborators/${collaboratorId}/roles`,
+      body,
+    );
   }
 
   listSpecialities(collaboratorId: number, query: PaginationQuery = {}) {

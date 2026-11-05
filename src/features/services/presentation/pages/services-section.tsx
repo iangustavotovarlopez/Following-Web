@@ -2,13 +2,18 @@ import { useCallback, useState, type FormEvent, type ReactNode } from 'react';
 import {
   servicesApi,
   type Environment,
+  type EnvironmentPatchRequest,
   type ServiceApplicationUnit,
+  type ServiceApplicationUnitPatchRequest,
   type ServiceGroup,
+  type ServiceGroupPatchRequest,
   type ServiceMetadata,
+  type ServiceMetadataPatchRequest,
 } from '../../infrastructure/api';
 import type { PageResponse } from '../../../../shared/api';
 import { ApiSection, ActiveBadge, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
+import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
 
@@ -17,7 +22,7 @@ interface CatalogCardProps<T> {
   description: string;
   columns: TableColumn<T>[];
   load: () => Promise<PageResponse<T> | null>;
-  form: ReactNode;
+  form: (items: T[], refresh: () => void) => ReactNode;
 }
 
 function CatalogCard<T>({
@@ -27,7 +32,7 @@ function CatalogCard<T>({
   load,
   form,
 }: CatalogCardProps<T>) {
-  const { data, loading, error } = useApiList(load);
+  const { data, loading, error, refresh } = useApiList(load);
   return (
     <ApiSection
       title={title}
@@ -36,7 +41,7 @@ function CatalogCard<T>({
       rows={data}
       loading={loading}
       error={error}
-      form={form}
+      form={form(data, refresh)}
     />
   );
 }
@@ -84,10 +89,9 @@ function EnvironmentCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const load = useCallback(
-    () => servicesApi.listEnvironments({ page: 1, pageSize: 20 }),
-    [refreshKey],
-  );
+  const [editingId, setEditingId] = useState(0);
+  const [patch, setPatch] = useState<EnvironmentPatchRequest>({});
+  const load = useCallback(() => servicesApi.listEnvironments({ page: 1, pageSize: 20 }), [refreshKey]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -103,20 +107,47 @@ function EnvironmentCard() {
       setSaving(false);
     }
   }
+  async function update(event: FormEvent, refresh: () => void) {
+    event.preventDefault();
+    if (!editingId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await servicesApi.patchEnvironment(editingId, patch);
+      refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <CatalogCard
       title="Environments"
       description="Ambientes disponibles para los servicios."
       columns={environmentColumns}
       load={load}
-      form={
-        <form className="inline-form" onSubmit={submit}>
-          <Field label="Código" value={code} onChange={(e) => setCode(e.target.value)} required />
-          <Field label="Nombre" value={name} onChange={(e) => setName(e.target.value)} required />
-          <SubmitButton loading={saving}>Crear</SubmitButton>
-          {error && <span className="form-error">{error}</span>}
-        </form>
-      }
+      form={(items, refresh) => (
+        <div className="form-stack">
+          <form className="inline-form" onSubmit={submit}>
+            <Field label="Código" value={code} onChange={(e) => setCode(e.target.value)} required />
+            <Field label="Nombre" value={name} onChange={(e) => setName(e.target.value)} required />
+            <SubmitButton loading={saving}>Crear</SubmitButton>
+            {error && <span className="form-error">{error}</span>}
+          </form>
+          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
+            <SelectField label="Editar ambiente" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
+              const item = items.find((candidate) => candidate.id === Number(e.target.value));
+              setEditingId(item?.id ?? 0);
+              setPatch(item ? { code: item.code, name: item.name, isActive: item.isActive } : {});
+            }} required />
+            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
+            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
+            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
+            <SubmitButton loading={saving}>Actualizar</SubmitButton>
+          </form>
+        </div>
+      )}
     />
   );
 }
@@ -126,10 +157,9 @@ function GroupCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const load = useCallback(
-    () => servicesApi.listGroups({ page: 1, pageSize: 20 }),
-    [refreshKey],
-  );
+  const [editingId, setEditingId] = useState(0);
+  const [patch, setPatch] = useState<ServiceGroupPatchRequest>({});
+  const load = useCallback(() => servicesApi.listGroups({ page: 1, pageSize: 20 }), [refreshKey]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -144,22 +174,51 @@ function GroupCard() {
       setSaving(false);
     }
   }
+  async function update(event: FormEvent, refresh: () => void) {
+    event.preventDefault();
+    if (!editingId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await servicesApi.patchGroup(editingId, patch);
+      refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <CatalogCard
       title="Service groups"
       description="Agrupadores de servicios."
       columns={groupColumns}
       load={load}
-      form={
-        <form className="inline-form" onSubmit={submit}>
-          <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-          <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <Field label="Fecha" type="date" value={form.registeredDate} onChange={(e) => setForm({ ...form, registeredDate: e.target.value })} required />
-          <Field label="Versión" value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} required />
-          <SubmitButton loading={saving}>Crear</SubmitButton>
-          {error && <span className="form-error">{error}</span>}
-        </form>
-      }
+      form={(items, refresh) => (
+        <div className="form-stack">
+          <form className="inline-form" onSubmit={submit}>
+            <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
+            <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <Field label="Fecha" type="date" value={form.registeredDate} onChange={(e) => setForm({ ...form, registeredDate: e.target.value })} required />
+            <Field label="Versión" value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} required />
+            <SubmitButton loading={saving}>Crear</SubmitButton>
+            {error && <span className="form-error">{error}</span>}
+          </form>
+          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
+            <SelectField label="Editar grupo" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
+              const item = items.find((candidate) => candidate.id === Number(e.target.value));
+              setEditingId(item?.id ?? 0);
+              setPatch(item ? { code: item.code, name: item.name, registeredDate: item.registeredDate, version: item.version, isActive: item.isActive } : {});
+            }} required />
+            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
+            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
+            <Field label="Fecha" type="date" value={patch.registeredDate ?? ''} onChange={(e) => setPatch({ ...patch, registeredDate: e.target.value })} />
+            <Field label="Versión" value={patch.version ?? ''} onChange={(e) => setPatch({ ...patch, version: e.target.value })} />
+            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
+            <SubmitButton loading={saving}>Actualizar</SubmitButton>
+          </form>
+        </div>
+      )}
     />
   );
 }
@@ -169,10 +228,9 @@ function ApplicationUnitCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const load = useCallback(
-    () => servicesApi.listApplicationUnits({ page: 1, pageSize: 20 }),
-    [refreshKey],
-  );
+  const [editingId, setEditingId] = useState(0);
+  const [patch, setPatch] = useState<ServiceApplicationUnitPatchRequest>({});
+  const load = useCallback(() => servicesApi.listApplicationUnits({ page: 1, pageSize: 20 }), [refreshKey]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -187,21 +245,49 @@ function ApplicationUnitCard() {
       setSaving(false);
     }
   }
+  async function update(event: FormEvent, refresh: () => void) {
+    event.preventDefault();
+    if (!editingId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await servicesApi.patchApplicationUnit(editingId, patch);
+      refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <CatalogCard
       title="Application units"
       description="Unidades aplicativas asociadas a servicios."
       columns={unitColumns}
       load={load}
-      form={
-        <form className="inline-form" onSubmit={submit}>
-          <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-          <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <Field label="Fecha" type="date" value={form.registeredDate} onChange={(e) => setForm({ ...form, registeredDate: e.target.value })} required />
-          <SubmitButton loading={saving}>Crear</SubmitButton>
-          {error && <span className="form-error">{error}</span>}
-        </form>
-      }
+      form={(items, refresh) => (
+        <div className="form-stack">
+          <form className="inline-form" onSubmit={submit}>
+            <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
+            <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <Field label="Fecha" type="date" value={form.registeredDate} onChange={(e) => setForm({ ...form, registeredDate: e.target.value })} required />
+            <SubmitButton loading={saving}>Crear</SubmitButton>
+            {error && <span className="form-error">{error}</span>}
+          </form>
+          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
+            <SelectField label="Editar unidad" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
+              const item = items.find((candidate) => candidate.id === Number(e.target.value));
+              setEditingId(item?.id ?? 0);
+              setPatch(item ? { code: item.code, name: item.name, registeredDate: item.registeredDate, isActive: item.isActive } : {});
+            }} required />
+            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
+            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
+            <Field label="Fecha" type="date" value={patch.registeredDate ?? ''} onChange={(e) => setPatch({ ...patch, registeredDate: e.target.value })} />
+            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
+            <SubmitButton loading={saving}>Actualizar</SubmitButton>
+          </form>
+        </div>
+      )}
     />
   );
 }
@@ -211,10 +297,9 @@ function MetadataCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const load = useCallback(
-    () => servicesApi.listMetadata({ page: 1, pageSize: 20 }),
-    [refreshKey],
-  );
+  const [editingId, setEditingId] = useState(0);
+  const [patch, setPatch] = useState<ServiceMetadataPatchRequest>({});
+  const load = useCallback(() => servicesApi.listMetadata({ page: 1, pageSize: 20 }), [refreshKey]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -229,20 +314,47 @@ function MetadataCard() {
       setSaving(false);
     }
   }
+  async function update(event: FormEvent, refresh: () => void) {
+    event.preventDefault();
+    if (!editingId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await servicesApi.patchMetadata(editingId, patch);
+      refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <CatalogCard
       title="Metadata"
       description="Metadata disponible para los servicios."
       columns={metadataColumns}
       load={load}
-      form={
-        <form className="inline-form" onSubmit={submit}>
-          <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-          <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <SubmitButton loading={saving}>Crear</SubmitButton>
-          {error && <span className="form-error">{error}</span>}
-        </form>
-      }
+      form={(items, refresh) => (
+        <div className="form-stack">
+          <form className="inline-form" onSubmit={submit}>
+            <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
+            <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <SubmitButton loading={saving}>Crear</SubmitButton>
+            {error && <span className="form-error">{error}</span>}
+          </form>
+          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
+            <SelectField label="Editar metadata" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
+              const item = items.find((candidate) => candidate.id === Number(e.target.value));
+              setEditingId(item?.id ?? 0);
+              setPatch(item ? { code: item.code, name: item.name, isActive: item.isActive } : {});
+            }} required />
+            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
+            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
+            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
+            <SubmitButton loading={saving}>Actualizar</SubmitButton>
+          </form>
+        </div>
+      )}
     />
   );
 }

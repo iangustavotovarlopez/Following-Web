@@ -4,8 +4,10 @@ import {
   type Branch,
   type Company,
   type Deliverable,
+  type DeliverablePatchRequest,
   type Fraction,
   type Period,
+  type PeriodPatchRequest,
   type Section,
   type Skill,
   type SkillLevel,
@@ -241,6 +243,7 @@ export function NestedResourcesSection() {
 
       <div className="operation-grid">
         <PeriodOperation companyId={companyId} refresh={() => setPeriods([...periods])} />
+        <PeriodPatchOperation companyId={companyId} periods={periods} />
         <SubperiodOperation companyId={companyId} periodId={periodId} />
         <BranchOperation companyId={companyId} />
         <SpecialityOperation companyId={companyId} branchId={branchId} />
@@ -260,6 +263,7 @@ export function NestedResourcesSection() {
         />
         <TeamOperation companyId={companyId} branchId={branchId} specialityId={specialityId} />
         <DeliverableOperation companyId={companyId} branchId={branchId} specialityId={specialityId} />
+        <DeliverablePatchOperation companyId={companyId} branchId={branchId} specialityId={specialityId} deliverables={deliverables} />
         <TeamMemberOperation
           companyId={companyId}
           branchId={branchId}
@@ -313,6 +317,29 @@ function PeriodOperation({ companyId }: { companyId: Id; refresh: () => void }) 
       <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
       <Field label="Inicio" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} required />
       <Field label="Fin" type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} required />
+    </OperationForm>
+  );
+}
+
+function PeriodPatchOperation({ companyId, periods }: { companyId: Id; periods: Period[] }) {
+  const action = useApiAction<Period>();
+  const [periodId, setPeriodId] = useState<Id>();
+  const [form, setForm] = useState<PeriodPatchRequest>({});
+  return (
+    <OperationForm title="Update period" action={action} onSubmit={(event) => {
+      event.preventDefault();
+      if (companyId && periodId) void action.execute(() => companiesApi.patchPeriod(companyId, periodId, form));
+    }}>
+      <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(event) => {
+        const period = periods.find((item) => item.id === idOf(event.target.value));
+        setPeriodId(period?.id);
+        setForm(period ? { name: period.name, code: period.code, startDate: period.startDate, endDate: period.endDate, isActive: period.isActive } : {});
+      }} required />
+      <Field label="Nombre" value={form.name ?? ''} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+      <Field label="Código" value={form.code ?? ''} onChange={(event) => setForm({ ...form, code: event.target.value })} />
+      <Field label="Inicio" type="date" value={form.startDate ?? ''} onChange={(event) => setForm({ ...form, startDate: event.target.value })} />
+      <Field label="Fin" type="date" value={form.endDate ?? ''} onChange={(event) => setForm({ ...form, endDate: event.target.value })} />
+      <SelectField label="Activo" value={form.isActive === undefined ? '' : String(form.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(event) => setForm({ ...form, isActive: event.target.value === 'true' })} />
     </OperationForm>
   );
 }
@@ -447,6 +474,35 @@ function DeliverableOperation({ companyId, branchId, specialityId }: { companyId
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       <Field label="Descripción" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
       <Field label="Secuencia" type="number" min="1" value={form.sequence} onChange={(e) => setForm({ ...form, sequence: Number(e.target.value) })} required />
+    </OperationForm>
+  );
+}
+
+function DeliverablePatchOperation({ companyId, branchId, specialityId, deliverables }: {
+  companyId: Id;
+  branchId: Id;
+  specialityId: Id;
+  deliverables: Deliverable[];
+}) {
+  const action = useApiAction<Deliverable>();
+  const [deliverableId, setDeliverableId] = useState<Id>();
+  const [form, setForm] = useState<DeliverablePatchRequest>({});
+  return (
+    <OperationForm title="Update deliverable" action={action} onSubmit={(event) => {
+      event.preventDefault();
+      if (companyId && branchId && specialityId && deliverableId) {
+        void action.execute(() => companiesApi.patchDeliverable(companyId, branchId, specialityId, deliverableId, form));
+      }
+    }}>
+      <SelectField label="Entregable" value={deliverableId ?? ''} options={optionsOf(deliverables, (item) => item.name)} onChange={(event) => {
+        const item = deliverables.find((candidate) => candidate.id === idOf(event.target.value));
+        setDeliverableId(item?.id);
+        setForm(item ? { name: item.name, description: item.description, sequence: item.sequence, isActive: item.isActive } : {});
+      }} required />
+      <Field label="Nombre" value={form.name ?? ''} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+      <Field label="Descripción" value={form.description ?? ''} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+      <Field label="Secuencia" type="number" min="1" value={form.sequence ?? ''} onChange={(event) => setForm({ ...form, sequence: Number(event.target.value) })} />
+      <SelectField label="Activo" value={form.isActive === undefined ? '' : String(form.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(event) => setForm({ ...form, isActive: event.target.value === 'true' })} />
     </OperationForm>
   );
 }
