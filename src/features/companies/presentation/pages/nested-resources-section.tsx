@@ -242,28 +242,99 @@ export function NestedResourcesSection() {
       </div>
 
       <div className="operation-grid">
-        <PeriodOperation companyId={companyId} refresh={() => setPeriods([...periods])} />
-        <PeriodPatchOperation companyId={companyId} periods={periods} />
-        <SubperiodOperation companyId={companyId} periodId={periodId} />
-        <BranchOperation companyId={companyId} />
-        <SpecialityOperation companyId={companyId} branchId={branchId} />
-        <SectionOperation companyId={companyId} periodId={periodId} subperiodId={subperiodId} />
+        <PeriodOperation
+          companyId={companyId}
+          onCreated={(period) => {
+            setPeriods((current) => current.some((item) => item.id === period.id) ? current : [...current, period]);
+            setPeriodId(period.id);
+          }}
+        />
+        <PeriodPatchOperation
+          companyId={companyId}
+          periods={periods}
+          onUpdated={(period) => setPeriods((current) => current.map((item) => item.id === period.id ? period : item))}
+        />
+        <SubperiodOperation
+          companyId={companyId}
+          periodId={periodId}
+          onCreated={(subperiod) => {
+            setSubperiods((current) => current.some((item) => item.id === subperiod.id) ? current : [...current, subperiod]);
+            setSubperiodId(subperiod.id);
+          }}
+        />
+        <BranchOperation
+          companyId={companyId}
+          onCreated={(branch) => {
+            setBranches((current) =>
+              current.some((item) => item.id === branch.id) ? current : [...current, branch],
+            );
+            setBranchId(branch.id);
+          }}
+        />
+        <SpecialityOperation
+          companyId={companyId}
+          branchId={branchId}
+          onCreated={(speciality) => {
+            setSpecialities((current) => current.some((item) => item.id === speciality.id) ? current : [...current, speciality]);
+            setSpecialityId(speciality.id);
+          }}
+        />
+        <SectionOperation
+          companyId={companyId}
+          periodId={periodId}
+          subperiodId={subperiodId}
+          onCreated={(section) => {
+            setSections((current) => current.some((item) => item.id === section.id) ? current : [...current, section]);
+            setSectionId(section.id);
+          }}
+        />
         <FractionOperation
           companyId={companyId}
           periodId={periodId}
           subperiodId={subperiodId}
           sectionId={sectionId}
         />
-        <SkillOperation companyId={companyId} branchId={branchId} specialityId={specialityId} />
+        <SkillOperation
+          companyId={companyId}
+          branchId={branchId}
+          specialityId={specialityId}
+          onCreated={(skill) => {
+            setSkills((current) => current.some((item) => item.id === skill.id) ? current : [...current, skill]);
+            setSkillId(skill.id);
+          }}
+        />
         <LevelOperation
           companyId={companyId}
           branchId={branchId}
           specialityId={specialityId}
           skillId={skillId}
         />
-        <TeamOperation companyId={companyId} branchId={branchId} specialityId={specialityId} />
-        <DeliverableOperation companyId={companyId} branchId={branchId} specialityId={specialityId} />
-        <DeliverablePatchOperation companyId={companyId} branchId={branchId} specialityId={specialityId} deliverables={deliverables} />
+        <TeamOperation
+          companyId={companyId}
+          branchId={branchId}
+          specialityId={specialityId}
+          onCreated={(team) => {
+            setTeams((current) => current.some((item) => item.id === team.id) ? current : [...current, team]);
+            setTeamId(team.id);
+          }}
+        />
+        <DeliverableOperation
+          companyId={companyId}
+          branchId={branchId}
+          specialityId={specialityId}
+          onCreated={(deliverable) => setDeliverables((current) =>
+            current.some((item) => item.id === deliverable.id) ? current : [...current, deliverable],
+          )}
+        />
+        <DeliverablePatchOperation
+          companyId={companyId}
+          branchId={branchId}
+          specialityId={specialityId}
+          deliverables={deliverables}
+          onUpdated={(deliverable) => setDeliverables((current) => current.map((item) =>
+            item.id === deliverable.id ? deliverable : item,
+          ))}
+        />
         <TeamMemberOperation
           companyId={companyId}
           branchId={branchId}
@@ -300,7 +371,10 @@ function OperationForm<T>({
   );
 }
 
-function PeriodOperation({ companyId }: { companyId: Id; refresh: () => void }) {
+function PeriodOperation({ companyId, onCreated }: {
+  companyId: Id;
+  onCreated?: (period: Period) => void;
+}) {
   const action = useApiAction<Period>();
   const [form, setForm] = useState({ name: '', code: '', startDate: '', endDate: '' });
   return (
@@ -310,7 +384,9 @@ function PeriodOperation({ companyId }: { companyId: Id; refresh: () => void }) 
       onSubmit={(event) => {
         event.preventDefault();
         if (!companyId) return;
-        void action.execute(() => companiesApi.createPeriod(companyId, form));
+        void action.execute(() => companiesApi.createPeriod(companyId, form)).then((period) => {
+          if (period) onCreated?.(period);
+        });
       }}
     >
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -321,14 +397,22 @@ function PeriodOperation({ companyId }: { companyId: Id; refresh: () => void }) 
   );
 }
 
-function PeriodPatchOperation({ companyId, periods }: { companyId: Id; periods: Period[] }) {
+function PeriodPatchOperation({ companyId, periods, onUpdated }: {
+  companyId: Id;
+  periods: Period[];
+  onUpdated?: (period: Period) => void;
+}) {
   const action = useApiAction<Period>();
   const [periodId, setPeriodId] = useState<Id>();
   const [form, setForm] = useState<PeriodPatchRequest>({});
   return (
     <OperationForm title="Update period" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId && periodId) void action.execute(() => companiesApi.patchPeriod(companyId, periodId, form));
+      if (companyId && periodId) {
+        void action.execute(() => companiesApi.patchPeriod(companyId, periodId, form)).then((period) => {
+          if (period) onUpdated?.(period);
+        });
+      }
     }}>
       <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(event) => {
         const period = periods.find((item) => item.id === idOf(event.target.value));
@@ -344,13 +428,21 @@ function PeriodPatchOperation({ companyId, periods }: { companyId: Id; periods: 
   );
 }
 
-function SubperiodOperation({ companyId, periodId }: { companyId: Id; periodId: Id }) {
+function SubperiodOperation({ companyId, periodId, onCreated }: {
+  companyId: Id;
+  periodId: Id;
+  onCreated?: (subperiod: Subperiod) => void;
+}) {
   const action = useApiAction<Subperiod>();
   const [form, setForm] = useState({ name: '', code: '', startDate: '', endDate: '' });
   return (
     <OperationForm title="Create subperiod" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId && periodId) void action.execute(() => companiesApi.createSubperiod(companyId, periodId, form));
+      if (companyId && periodId) {
+        void action.execute(() => companiesApi.createSubperiod(companyId, periodId, form)).then((subperiod) => {
+          if (subperiod) onCreated?.(subperiod);
+        });
+      }
     }}>
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
@@ -360,13 +452,23 @@ function SubperiodOperation({ companyId, periodId }: { companyId: Id; periodId: 
   );
 }
 
-function BranchOperation({ companyId }: { companyId: Id }) {
+function BranchOperation({
+  companyId,
+  onCreated,
+}: {
+  companyId: Id;
+  onCreated: (branch: Branch) => void;
+}) {
   const action = useApiAction<Branch>();
   const [form, setForm] = useState({ name: '', description: '' });
   return (
     <OperationForm title="Create branch" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId) void action.execute(() => companiesApi.createBranch(companyId, form));
+      if (companyId) {
+        void action.execute(() => companiesApi.createBranch(companyId, form)).then((branch) => {
+          if (branch) onCreated(branch);
+        });
+      }
     }}>
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       <Field label="Descripción" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
@@ -374,13 +476,21 @@ function BranchOperation({ companyId }: { companyId: Id }) {
   );
 }
 
-function SpecialityOperation({ companyId, branchId }: { companyId: Id; branchId: Id }) {
+function SpecialityOperation({ companyId, branchId, onCreated }: {
+  companyId: Id;
+  branchId: Id;
+  onCreated?: (speciality: Speciality) => void;
+}) {
   const action = useApiAction<Speciality>();
   const [form, setForm] = useState({ code: '', name: '', description: '' });
   return (
     <OperationForm title="Create speciality" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId && branchId) void action.execute(() => companiesApi.createSpeciality(companyId, branchId, form));
+      if (companyId && branchId) {
+        void action.execute(() => companiesApi.createSpeciality(companyId, branchId, form)).then((speciality) => {
+          if (speciality) onCreated?.(speciality);
+        });
+      }
     }}>
       <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -389,13 +499,22 @@ function SpecialityOperation({ companyId, branchId }: { companyId: Id; branchId:
   );
 }
 
-function SectionOperation({ companyId, periodId, subperiodId }: { companyId: Id; periodId: Id; subperiodId: Id }) {
+function SectionOperation({ companyId, periodId, subperiodId, onCreated }: {
+  companyId: Id;
+  periodId: Id;
+  subperiodId: Id;
+  onCreated?: (section: Section) => void;
+}) {
   const action = useApiAction<Section>();
   const [form, setForm] = useState({ name: '', code: '', startDate: '', endDate: '' });
   return (
     <OperationForm title="Create section" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId && periodId && subperiodId) void action.execute(() => companiesApi.createSection(companyId, periodId, subperiodId, form));
+      if (companyId && periodId && subperiodId) {
+        void action.execute(() => companiesApi.createSection(companyId, periodId, subperiodId, form)).then((section) => {
+          if (section) onCreated?.(section);
+        });
+      }
     }}>
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
@@ -421,13 +540,22 @@ function FractionOperation({ companyId, periodId, subperiodId, sectionId }: { co
   );
 }
 
-function SkillOperation({ companyId, branchId, specialityId }: { companyId: Id; branchId: Id; specialityId: Id }) {
+function SkillOperation({ companyId, branchId, specialityId, onCreated }: {
+  companyId: Id;
+  branchId: Id;
+  specialityId: Id;
+  onCreated?: (skill: Skill) => void;
+}) {
   const action = useApiAction<Skill>();
   const [form, setForm] = useState({ code: '', name: '', description: '' });
   return (
     <OperationForm title="Create skill" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId && branchId && specialityId) void action.execute(() => companiesApi.createSkill(companyId, branchId, specialityId, form));
+      if (companyId && branchId && specialityId) {
+        void action.execute(() => companiesApi.createSkill(companyId, branchId, specialityId, form)).then((skill) => {
+          if (skill) onCreated?.(skill);
+        });
+      }
     }}>
       <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -450,26 +578,44 @@ function LevelOperation({ companyId, branchId, specialityId, skillId }: { compan
   );
 }
 
-function TeamOperation({ companyId, branchId, specialityId }: { companyId: Id; branchId: Id; specialityId: Id }) {
+function TeamOperation({ companyId, branchId, specialityId, onCreated }: {
+  companyId: Id;
+  branchId: Id;
+  specialityId: Id;
+  onCreated?: (team: Team) => void;
+}) {
   const action = useApiAction<Team>();
   const [name, setName] = useState('');
   return (
     <OperationForm title="Create team" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId && branchId && specialityId) void action.execute(() => companiesApi.createTeam(companyId, branchId, specialityId, { name }));
+      if (companyId && branchId && specialityId) {
+        void action.execute(() => companiesApi.createTeam(companyId, branchId, specialityId, { name })).then((team) => {
+          if (team) onCreated?.(team);
+        });
+      }
     }}>
       <Field label="Nombre" value={name} onChange={(e) => setName(e.target.value)} required />
     </OperationForm>
   );
 }
 
-function DeliverableOperation({ companyId, branchId, specialityId }: { companyId: Id; branchId: Id; specialityId: Id }) {
+function DeliverableOperation({ companyId, branchId, specialityId, onCreated }: {
+  companyId: Id;
+  branchId: Id;
+  specialityId: Id;
+  onCreated?: (deliverable: Deliverable) => void;
+}) {
   const action = useApiAction<Deliverable>();
   const [form, setForm] = useState({ name: '', description: '', sequence: 1 });
   return (
     <OperationForm title="Create deliverable" action={action} onSubmit={(event) => {
       event.preventDefault();
-      if (companyId && branchId && specialityId) void action.execute(() => companiesApi.createDeliverable(companyId, branchId, specialityId, form));
+      if (companyId && branchId && specialityId) {
+        void action.execute(() => companiesApi.createDeliverable(companyId, branchId, specialityId, form)).then((deliverable) => {
+          if (deliverable) onCreated?.(deliverable);
+        });
+      }
     }}>
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
       <Field label="Descripción" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
@@ -478,11 +624,12 @@ function DeliverableOperation({ companyId, branchId, specialityId }: { companyId
   );
 }
 
-function DeliverablePatchOperation({ companyId, branchId, specialityId, deliverables }: {
+function DeliverablePatchOperation({ companyId, branchId, specialityId, deliverables, onUpdated }: {
   companyId: Id;
   branchId: Id;
   specialityId: Id;
   deliverables: Deliverable[];
+  onUpdated?: (deliverable: Deliverable) => void;
 }) {
   const action = useApiAction<Deliverable>();
   const [deliverableId, setDeliverableId] = useState<Id>();
@@ -491,7 +638,9 @@ function DeliverablePatchOperation({ companyId, branchId, specialityId, delivera
     <OperationForm title="Update deliverable" action={action} onSubmit={(event) => {
       event.preventDefault();
       if (companyId && branchId && specialityId && deliverableId) {
-        void action.execute(() => companiesApi.patchDeliverable(companyId, branchId, specialityId, deliverableId, form));
+        void action.execute(() => companiesApi.patchDeliverable(companyId, branchId, specialityId, deliverableId, form)).then((deliverable) => {
+          if (deliverable) onUpdated?.(deliverable);
+        });
       }
     }}>
       <SelectField label="Entregable" value={deliverableId ?? ''} options={optionsOf(deliverables, (item) => item.name)} onChange={(event) => {

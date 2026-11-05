@@ -4,6 +4,7 @@ import {
   type Collaborator,
   type CollaboratorRole,
   type CollaboratorRoleRelation,
+  type CollaboratorSpeciality,
 } from '../../infrastructure/api';
 import { ActiveBadge } from '../../../../shared/components/api-section';
 
@@ -53,6 +54,24 @@ async function loadAllRoleRelations(collaboratorId: number) {
   return relations;
 }
 
+async function loadAllSpecialities(collaboratorId: number) {
+  let page = 1;
+  let totalPages = 1;
+  const specialities: CollaboratorSpeciality[] = [];
+
+  while (page <= totalPages) {
+    const response = await collaboratorsApi.listSpecialities(collaboratorId, {
+      page,
+      pageSize: 100,
+    });
+    specialities.push(...response.content);
+    totalPages = response.pagination.totalPages;
+    page += 1;
+  }
+
+  return specialities;
+}
+
 interface CollaboratorDetailsPageProps {
   collaboratorId: number;
   collaboratorCode: string;
@@ -65,21 +84,27 @@ export function CollaboratorDetailsPage({
   const [collaborator, setCollaborator] = useState<Collaborator | null>(null);
   const [roles, setRoles] = useState<CollaboratorRole[]>([]);
   const [relations, setRelations] = useState<CollaboratorRoleRelation[]>([]);
+  const [specialities, setSpecialities] = useState<CollaboratorSpeciality[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    Promise.all([loadAllRoles(), loadAllRoleRelations(collaboratorId)])
-      .then(([roleResults, relationResults]) => {
+    Promise.all([
+      loadAllRoles(),
+      loadAllRoleRelations(collaboratorId),
+      loadAllSpecialities(collaboratorId),
+    ])
+      .then(([roleResults, relationResults, specialityResults]) => {
         if (!active) return;
         setRoles(roleResults);
         setRelations(relationResults);
+        setSpecialities(specialityResults);
       })
       .catch((cause) => {
         if (active) {
-          setError(cause instanceof Error ? cause.message : 'No se pudieron consultar los roles');
+          setError(cause instanceof Error ? cause.message : 'No se pudieron consultar roles y especialidades');
         }
       })
       .finally(() => {
@@ -159,6 +184,41 @@ export function CollaboratorDetailsPage({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="resource-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Detalle del colaborador</p>
+              <h2>Especialidades</h2>
+              <p className="muted">Especialidades relacionadas con este colaborador.</p>
+            </div>
+          </div>
+
+          {error ? null : loading ? (
+            <div className="empty-state">Consultando especialidades...</div>
+          ) : specialities.length === 0 ? (
+            <div className="empty-state">Este colaborador aún no tiene especialidades.</div>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Especialidad</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {specialities.map((relation) => (
+                    <tr key={relation.id}>
+                      <td>{relation.speciality.name}</td>
+                      <td><ActiveBadge active={relation.isActive} /></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
