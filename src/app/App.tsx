@@ -5,7 +5,7 @@ import { CollaboratorRolesSection } from '../features/collaborators/presentation
 import { CollaboratorRoleAssignmentsSection } from '../features/collaborators/presentation/pages/collaborator-role-assignments-section';
 import { ProjectsSection } from '../features/projects/presentation/pages/projects-section';
 import { ServicesSection } from '../features/services/presentation/pages/services-section';
-import { NestedResourcesSection } from '../features/companies/presentation/pages/nested-resources-section';
+import { NestedResourceManagementSection } from '../features/companies/presentation/pages/nested-resource-management';
 import { AdvancedRelationsSection } from '../features/relations/presentation/pages/advanced-relations-section';
 
 export function App() {
@@ -40,7 +40,7 @@ export function App() {
         <CollaboratorRoleAssignmentsSection />
         <ProjectsSection />
         <ServicesSection />
-        <NestedResourcesSection />
+        <NestedResourceManagementSection />
         <AdvancedRelationsSection />
       </main>
     </div>
