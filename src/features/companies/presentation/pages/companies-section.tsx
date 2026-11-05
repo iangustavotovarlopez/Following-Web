@@ -87,7 +87,7 @@ export function CompaniesSection() {
       <SelectField
         label="Estado"
         value={form.state.id || ''}
-        options={states.map((state) => ({ value: state.id, label: `${state.id} — ${state.name}` }))}
+        options={states.map((state) => ({ value: state.id, label: state.name }))}
         onChange={(event) => setForm({ ...form, state: { id: Number(event.target.value) } })}
         disabled={statesLoading || states.length === 0}
         required

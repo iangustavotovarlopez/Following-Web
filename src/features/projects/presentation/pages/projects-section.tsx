@@ -5,7 +5,7 @@ import {
   type Project,
   type ProjectState,
 } from '../../infrastructure/api';
-import { ApiSection, ActiveBadge, type TableColumn } from '../../../../shared/components/api-section';
+import { ApiSection, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
@@ -38,14 +38,13 @@ export function ProjectsSection() {
     {
       key: 'state',
       label: 'Estado',
-      render: (item) => states.find((state) => state.id === item.state.id)?.name ?? `#${item.state.id}`,
-    },
-    {
-      key: 'active',
-      label: 'Activo',
       render: (item) => {
         const state = states.find((candidate) => candidate.id === item.state.id);
-        return state ? <ActiveBadge active={state.isActive} /> : '—';
+        return state ? (
+          <span className={state.isActive ? 'badge state-active' : 'badge state-inactive'}>
+            {state.name}
+          </span>
+        ) : '—';
       },
     },
   ];
@@ -82,8 +81,8 @@ export function ProjectsSection() {
     <form className="inline-form" onSubmit={submit}>
       <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
       <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-      <SelectField label="Compañía" value={form.company.id} options={companies.map((item) => ({ value: item.id, label: `${item.code} — ${item.name}` }))} onChange={(e) => setForm({ ...form, company: { id: Number(e.target.value) } })} required />
-      <SelectField label="Estado" value={form.state.id} options={states.map((item) => ({ value: item.id, label: `${item.id} — ${item.name}` }))} onChange={(e) => setForm({ ...form, state: { id: Number(e.target.value) } })} required />
+      <SelectField label="Compañía" value={form.company.id} options={companies.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, company: { id: Number(e.target.value) } })} required />
+      <SelectField label="Estado" value={form.state.id} options={states.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, state: { id: Number(e.target.value) } })} required />
       <SubmitButton loading={saving}>Crear</SubmitButton>
       {formError && <span className="form-error">{formError}</span>}
     </form>

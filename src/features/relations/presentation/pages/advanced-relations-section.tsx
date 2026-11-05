@@ -129,14 +129,14 @@ export function AdvancedRelationsSection() {
       </div>
 
       <div className="selector-bar">
-        <SelectField label="Company" value={companyId ?? ''} options={optionsOf(companies, (item) => `${item.code} — ${item.name}`)} onChange={(e) => setCompanyId(idOf(e.target.value))} />
+        <SelectField label="Company" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(e) => setCompanyId(idOf(e.target.value))} />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(e) => setBranchId(idOf(e.target.value))} />
-        <SelectField label="Speciality" value={specialityId ?? ''} options={optionsOf(specialities, (item) => `${item.code} — ${item.name}`)} onChange={(e) => setSpecialityId(idOf(e.target.value))} />
-        <SelectField label="Collaborator" value={collaboratorId ?? ''} options={optionsOf(collaborators, (item) => `${item.code} — ${item.name} ${item.lastname}`)} onChange={(e) => setCollaboratorId(idOf(e.target.value))} />
-        <SelectField label="Project" value={projectId ?? ''} options={optionsOf(projects, (item) => `${item.code} — ${item.name}`)} onChange={(e) => setProjectId(idOf(e.target.value))} />
-        <SelectField label="Period" value={periodId ?? ''} options={optionsOf(periods, (item) => `${item.code} — ${item.name}`)} onChange={(e) => setPeriodId(idOf(e.target.value))} />
+        <SelectField label="Speciality" value={specialityId ?? ''} options={optionsOf(specialities, (item) => item.name)} onChange={(e) => setSpecialityId(idOf(e.target.value))} />
+        <SelectField label="Collaborator" value={collaboratorId ?? ''} options={optionsOf(collaborators, (item) => item.name)} onChange={(e) => setCollaboratorId(idOf(e.target.value))} />
+        <SelectField label="Project" value={projectId ?? ''} options={optionsOf(projects, (item) => item.name)} onChange={(e) => setProjectId(idOf(e.target.value))} />
+        <SelectField label="Period" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(e) => setPeriodId(idOf(e.target.value))} />
         <SelectField label="Skill" value={skillId ?? ''} options={optionsOf(skills, (item) => item.name)} onChange={(e) => setSkillId(idOf(e.target.value))} />
-        <SelectField label="Level" value={levelId ?? ''} options={optionsOf(levels, (item) => `${item.number} — ${item.name}`)} onChange={(e) => setLevelId(idOf(e.target.value))} />
+        <SelectField label="Level" value={levelId ?? ''} options={optionsOf(levels, (item) => item.name)} onChange={(e) => setLevelId(idOf(e.target.value))} />
       </div>
 
       <div className="operation-grid">
@@ -217,7 +217,7 @@ function ServiceEnvironmentOperation({ environments }: { environments: Environme
   return (
     <OperationCard title="Assign service environment" description="El servicio se identifica por ID; el ambiente se elige del catálogo.">
       <Field label="Service ID" type="number" min="1" value={serviceId} onChange={(e) => setServiceId(e.target.value)} />
-      <SelectField label="Environment" value={environmentId ?? ''} options={optionsOf(environments, (item) => `${item.code} — ${item.name}`)} onChange={(e) => setEnvironmentId(idOf(e.target.value))} />
+      <SelectField label="Environment" value={environmentId ?? ''} options={optionsOf(environments, (item) => item.name)} onChange={(e) => setEnvironmentId(idOf(e.target.value))} />
       <button className="button primary" onClick={() => {
         if (serviceId && environmentId) void action.execute(() => servicesApi.assignServiceEnvironment(Number(serviceId), environmentId));
       }} disabled={action.loading || !serviceId || !environmentId}>
@@ -236,7 +236,7 @@ function ServiceMetadataOperation({ metadata }: { metadata: ServiceMetadata[] })
   return (
     <OperationCard title="Assign service metadata" description="Metadata seleccionada del catálogo con detalle requerido.">
       <Field label="Service ID" type="number" min="1" value={serviceId} onChange={(e) => setServiceId(e.target.value)} />
-      <SelectField label="Metadata" value={metadataId ?? ''} options={optionsOf(metadata, (item) => `${item.code} — ${item.name}`)} onChange={(e) => setMetadataId(idOf(e.target.value))} />
+      <SelectField label="Metadata" value={metadataId ?? ''} options={optionsOf(metadata, (item) => item.name)} onChange={(e) => setMetadataId(idOf(e.target.value))} />
       <Field label="Detalle" value={detail} onChange={(e) => setDetail(e.target.value)} />
       <button className="button primary" onClick={() => {
         if (serviceId && metadataId && detail.trim()) void action.execute(() => servicesApi.assignServiceMetadata(Number(serviceId), metadataId, detail));

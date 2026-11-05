@@ -39,6 +39,16 @@ API para:
 - Planning de proyectos.
 - Ambientes y metadata asignados a servicios.
 
+## Estándar de formularios
+
+Los formularios del proyecto deben conservar el patrón visual de la sección
+Collaborators: campos etiquetados con `Field` o `SelectField`, botón
+`SubmitButton`, distribución horizontal con ajuste automático de línea y
+espaciado uniforme. Los formularios de operaciones anidadas pueden usar
+`operation-form` para adaptarse al ancho de su tarjeta, pero comparten la misma
+distribución y controles. Los errores y resultados deben mostrarse dentro del
+formulario con los estilos compartidos existentes.
+
 La estructura está organizada por funcionalidades y capas:
 
 ```text

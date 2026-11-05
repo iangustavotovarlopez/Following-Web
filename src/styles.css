@@ -132,13 +132,12 @@ button {
   margin-bottom: 0;
 }
 
+.inline-form,
 .operation-form {
-  display: grid;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
-}
-
-.operation-form .button {
-  justify-self: start;
 }
 
 .action-result {
@@ -175,12 +174,17 @@ button {
 }
 
 .inline-form {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
   min-width: min(100%, 620px);
+}
+
+.operation-form {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.operation-form .button {
+  align-self: flex-start;
 }
 
 .field {
@@ -304,6 +308,18 @@ tbody tr:last-child td {
   background: #fff1d8;
 }
 
+.badge.state-active {
+  border: 1px solid #2eae67;
+  color: #176f45;
+  background: transparent;
+}
+
+.badge.state-inactive {
+  border: 1px solid #d59a3a;
+  color: #7d4d18;
+  background: transparent;
+}
+
 .empty-state {
   padding: 32px 24px;
   color: #728096;
@@ -318,6 +334,10 @@ tbody tr:last-child td {
 
   .inline-form {
     justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .operation-form {
     min-width: 0;
   }
 }

@@ -192,19 +192,19 @@ export function NestedResourcesSection() {
         <SelectField
           label="Company"
           value={companyId ?? ''}
-          options={optionsOf(companies, (item) => `${item.code} — ${item.name}`)}
+          options={optionsOf(companies, (item) => item.name)}
           onChange={(event) => setCompanyId(idOf(event.target.value))}
         />
         <SelectField
           label="Period"
           value={periodId ?? ''}
-          options={optionsOf(periods, (item) => `${item.code} — ${item.name}`)}
+          options={optionsOf(periods, (item) => item.name)}
           onChange={(event) => setPeriodId(idOf(event.target.value))}
         />
         <SelectField
           label="Subperiod"
           value={subperiodId ?? ''}
-          options={optionsOf(subperiods, (item) => `${item.code} — ${item.name}`)}
+          options={optionsOf(subperiods, (item) => item.name)}
           onChange={(event) => setSubperiodId(idOf(event.target.value))}
         />
         <SelectField
@@ -216,13 +216,13 @@ export function NestedResourcesSection() {
         <SelectField
           label="Speciality"
           value={specialityId ?? ''}
-          options={optionsOf(specialities, (item) => `${item.code} — ${item.name}`)}
+          options={optionsOf(specialities, (item) => item.name)}
           onChange={(event) => setSpecialityId(idOf(event.target.value))}
         />
         <SelectField
           label="Section"
           value={sectionId ?? ''}
-          options={optionsOf(sections, (item) => `${item.code} — ${item.name}`)}
+          options={optionsOf(sections, (item) => item.name)}
           onChange={(event) => setSectionId(idOf(event.target.value))}
         />
         <SelectField
@@ -479,7 +479,7 @@ function TeamMemberOperation({
       <SelectField
         label="Collaborator"
         value={collaboratorId ?? ''}
-        options={optionsOf(collaborators, (item) => `${item.code} — ${item.name} ${item.lastname}`)}
+        options={optionsOf(collaborators, (item) => item.name)}
         onChange={(event) => setCollaboratorId(idOf(event.target.value))}
       />
     </OperationForm>
