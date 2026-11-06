@@ -113,6 +113,17 @@ button {
   padding: 24px;
 }
 
+.relation-operation-content {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.relation-operation-content .operation-form {
+  width: 100%;
+  justify-content: flex-start;
+}
+
 .operation-card {
   display: grid;
   align-content: start;

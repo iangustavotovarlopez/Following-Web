@@ -49,6 +49,20 @@ export function ProjectsSection() {
         return state ? <ActiveBadge active={state.isActive} /> : '—';
       },
     },
+    {
+      key: 'actions',
+      label: 'Acciones',
+      render: (item) => (
+        <a
+          className="button primary details-link"
+          href={`/?projectId=${item.id}&projectCode=${encodeURIComponent(item.code)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Ver detalles
+        </a>
+      ),
+    },
   ];
   const [form, setForm] = useState<CreateProjectRequest>(initialForm);
   const [saving, setSaving] = useState(false);

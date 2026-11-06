@@ -94,8 +94,8 @@ export interface AddPlanningPeriodRequest {
 }
 
 export interface AddPlanningSectionRequest {
-  subperiodId: number;
-  sectionId: number;
+  subperiod: { id: number };
+  section: { id: number };
 }
 
 export class ProjectsApi {
@@ -127,7 +127,7 @@ export class ProjectsApi {
 
   listPlanning(projectId: number) {
     return this.client.get<Planning[]>(
-      `/projects/v0/projects/${projectId}/planning`,
+      `/projects/v0/projects/${projectId}/plannings`,
     );
   }
 
@@ -135,8 +135,8 @@ export class ProjectsApi {
     return this.client.post<{
       id: number;
       name: string;
-      period: { id: number };
-    }>(`/projects/v0/projects/${projectId}/planning`, body);
+      periodId: number;
+    }>(`/projects/v0/projects/${projectId}/plannings`, body);
   }
 
   addPlanningPeriod(
@@ -149,12 +149,12 @@ export class ProjectsApi {
       period: { id: number };
       isAdditional: boolean;
       isActive: boolean;
-    }>(`/projects/v0/projects/${projectId}/planning/${planningId}/periods`, body);
+    }>(`/projects/v0/projects/${projectId}/plannings/${planningId}/periods`, body);
   }
 
   deletePlanningPeriod(projectId: number, planningId: number, periodId: number) {
     return this.client.delete(
-      `/projects/v0/projects/${projectId}/planning/${planningId}/periods/${periodId}`,
+      `/projects/v0/projects/${projectId}/plannings/${planningId}/periods/${periodId}`,
     );
   }
 
@@ -164,7 +164,7 @@ export class ProjectsApi {
     subperiodId: number,
   ) {
     return this.client.delete(
-      `/projects/v0/projects/${projectId}/planning/${planningId}/subperiods/${subperiodId}`,
+      `/projects/v0/projects/${projectId}/plannings/${planningId}/subperiods/${subperiodId}`,
     );
   }
 
@@ -174,7 +174,7 @@ export class ProjectsApi {
     body: AddPlanningSectionRequest,
   ) {
     return this.client.post<void>(
-      `/projects/v0/projects/${projectId}/planning/${planningId}/sections`,
+      `/projects/v0/projects/${projectId}/plannings/${planningId}/sections`,
       body,
     );
   }

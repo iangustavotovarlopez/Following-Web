@@ -103,6 +103,18 @@ export interface BranchCreateRequest {
   description?: string;
 }
 
+export interface Technology {
+  id: number;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface TechnologyCreateRequest {
+  code: string;
+  name: string;
+}
+
 export interface Speciality {
   id: number;
   code: string;
@@ -137,7 +149,6 @@ export interface Skill {
 }
 
 export interface SkillCreateRequest {
-  code: string;
   name: string;
   description?: string;
 }
@@ -275,6 +286,20 @@ export class CompaniesApi {
     );
   }
 
+  listTechnologies(companyId: number, branchId: number, query: PaginationQuery = {}) {
+    return this.client.get<PageResponse<Technology>>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies`,
+      query,
+    );
+  }
+
+  createTechnology(companyId: number, branchId: number, body: TechnologyCreateRequest) {
+    return this.client.post<Technology>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies`,
+      body,
+    );
+  }
+
   listSpecialities(companyId: number, branchId: number, query: PaginationQuery = {}) {
     return this.client.get<PageResponse<Speciality>>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities`,
@@ -346,11 +371,11 @@ export class CompaniesApi {
   listSkills(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     query: PaginationQuery = {},
   ) {
     return this.client.get<PageResponse<Skill>>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/skills`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills`,
       query,
     );
   }
@@ -358,11 +383,11 @@ export class CompaniesApi {
   createSkill(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     body: SkillCreateRequest,
   ) {
     return this.client.post<Skill>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/skills`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills`,
       body,
     );
   }
@@ -370,12 +395,12 @@ export class CompaniesApi {
   listSkillLevels(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     skillId: number,
     query: PaginationQuery = {},
   ) {
     return this.client.get<PageResponse<SkillLevel>>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/skills/${skillId}/levels`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}/levels`,
       query,
     );
   }
@@ -383,12 +408,12 @@ export class CompaniesApi {
   createSkillLevel(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     skillId: number,
     body: SkillLevelCreateRequest,
   ) {
     return this.client.post<SkillLevel>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/skills/${skillId}/levels`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}/levels`,
       body,
     );
   }
@@ -453,11 +478,11 @@ export class CompaniesApi {
   listDeliverables(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     query: PaginationQuery = {},
   ) {
     return this.client.get<PageResponse<Deliverable>>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/deliverables`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/deliverables`,
       query,
     );
   }
@@ -465,11 +490,11 @@ export class CompaniesApi {
   createDeliverable(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     body: DeliverableCreateRequest,
   ) {
     return this.client.post<Deliverable>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/deliverables`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/deliverables`,
       body,
     );
   }
@@ -477,12 +502,12 @@ export class CompaniesApi {
   patchDeliverable(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     id: number,
     body: DeliverablePatchRequest,
   ) {
     return this.client.patch<Deliverable>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/deliverables/${id}`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/deliverables/${id}`,
       body,
     );
   }

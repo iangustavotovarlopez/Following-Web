@@ -14,6 +14,7 @@ async function loadRoles(): Promise<CollaboratorRole[]> {
 
   while (page <= totalPages) {
     const response = await collaboratorsApi.listRoles({ page, pageSize: 100 });
+    if (!response) break;
     roles.push(...response.content);
     totalPages = response.pagination.totalPages;
     page += 1;
@@ -88,7 +89,7 @@ export function CollaboratorRoleAssignmentsSection() {
         .then((response) => {
           if (active) {
             setCollaboratorMatches(
-              response.content.filter((collaborator) =>
+              (response?.content ?? []).filter((collaborator) =>
                 collaborator.code.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
               ),
             );

@@ -83,8 +83,26 @@ export interface CollaboratorSpecialitySkill {
   isActive: boolean;
 }
 
+export interface CollaboratorTechnology {
+  id: number;
+  technology: { id: number };
+  isActive: boolean;
+}
+
+export interface CollaboratorTechnologySkill {
+  id: number;
+  skill: { id: number; name: string };
+  level?: { id: number; name: string };
+  isActive: boolean;
+}
+
 export interface CreateCollaboratorSpecialityRequest {
   speciality: { id: number };
+  isActive?: boolean;
+}
+
+export interface CreateCollaboratorTechnologyRequest {
+  technology: { id: number };
   isActive?: boolean;
 }
 
@@ -93,6 +111,11 @@ export interface CreateCollaboratorRoleRelationRequest {
 }
 
 export interface PatchCollaboratorSpecialitySkillRequest {
+  level: { id: number };
+  isActive?: boolean;
+}
+
+export interface PatchCollaboratorTechnologySkillRequest {
   level: { id: number };
   isActive?: boolean;
 }
@@ -167,6 +190,23 @@ export class CollaboratorsApi {
     );
   }
 
+  listTechnologies(collaboratorId: number, query: PaginationQuery = {}) {
+    return this.client.get<PageResponse<CollaboratorTechnology>>(
+      `/collaborators/v0/collaborators/${collaboratorId}/technologies`,
+      query,
+    );
+  }
+
+  createTechnology(
+    collaboratorId: number,
+    body: CreateCollaboratorTechnologyRequest,
+  ) {
+    return this.client.post<CollaboratorTechnology>(
+      `/collaborators/v0/collaborators/${collaboratorId}/technologies`,
+      body,
+    );
+  }
+
   listSpecialitySkills(
     collaboratorId: number,
     specialityId: number,
@@ -186,6 +226,29 @@ export class CollaboratorsApi {
   ) {
     return this.client.patch<CollaboratorSpecialitySkill>(
       `/collaborators/v0/collaborators/${collaboratorId}/specialities/${specialityId}/skills/${skillId}`,
+      body,
+    );
+  }
+
+  listTechnologySkills(
+    collaboratorId: number,
+    technologyId: number,
+    query: PaginationQuery = {},
+  ) {
+    return this.client.get<PageResponse<CollaboratorTechnologySkill>>(
+      `/collaborators/v0/collaborators/${collaboratorId}/technologies/${technologyId}/skills`,
+      query,
+    );
+  }
+
+  patchTechnologySkill(
+    collaboratorId: number,
+    technologyId: number,
+    skillId: number,
+    body: PatchCollaboratorTechnologySkillRequest,
+  ) {
+    return this.client.patch<CollaboratorTechnologySkill>(
+      `/collaborators/v0/collaborators/${collaboratorId}/technologies/${technologyId}/skills/${skillId}`,
       body,
     );
   }

@@ -34,6 +34,7 @@ import {
   type Subperiod,
   type Team,
   type TeamMember,
+  type Technology,
 } from '../../infrastructure/api';
 import { collaboratorsApi, type Collaborator } from '../../../collaborators/infrastructure/api';
 
@@ -141,6 +142,7 @@ export function NestedResourceManagementSection() {
       <PeriodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <SubperiodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <BranchesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+      <TechnologiesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <SpecialitiesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <SectionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <FractionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
@@ -383,6 +385,51 @@ function SpecialitiesSection({ companies, revision, onSaved }: {
   );
 }
 
+function TechnologiesSection({ companies, revision, onSaved }: {
+  companies: Company[];
+  revision: number;
+  onSaved: () => void;
+}) {
+  const [companyId, setCompanyId] = useState<Id>();
+  const [branchId, setBranchId] = useState<Id>();
+  const branches = useOptions(`technology-branches:${companyId}:${revision}`, () =>
+    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
+  );
+  const load = useScopedList(`technologies:${companyId}:${branchId}:${revision}`, () =>
+    companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
+  );
+  const columns: TableColumn<Technology>[] = [
+    { key: 'code', label: 'Código', render: (item) => item.code },
+    { key: 'name', label: 'Nombre', render: (item) => item.name },
+    { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
+  ];
+  return (
+    <ManagedResourceSection
+      title="Technologies"
+      description="Consulta y registra technologies dentro de una branch."
+      columns={columns}
+      rows={load.data}
+      loading={load.loading}
+      error={load.error}
+      enabled={Boolean(companyId && branchId)}
+      filterFields={<>
+        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
+          setCompanyId(idOf(event.target.value));
+          setBranchId(undefined);
+        }} required />
+        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => setBranchId(idOf(event.target.value))} disabled={!companyId} required />
+      </>}
+      initialForm={{ code: '', name: '' }}
+      renderFields={(form, setForm) => <>
+        <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
+        <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+      </>}
+      create={(form) => companyId && branchId ? companiesApi.createTechnology(companyId, branchId, form) : Promise.resolve(null)}
+      onSaved={onSaved}
+    />
+  );
+}
+
 function SectionsSection({ companies, revision, onSaved }: {
   companies: Company[];
   revision: number;
@@ -516,15 +563,15 @@ function SkillsSection({ companies, revision, onSaved }: {
 }) {
   const [companyId, setCompanyId] = useState<Id>();
   const [branchId, setBranchId] = useState<Id>();
-  const [specialityId, setSpecialityId] = useState<Id>();
+  const [technologyId, setTechnologyId] = useState<Id>();
   const branches = useOptions(`skill-branches:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
   );
-  const specialities = useOptions(`skill-specialities:${companyId}:${branchId}:${revision}`, () =>
-    companyId && branchId ? companiesApi.listSpecialities(companyId, branchId, pagination) : Promise.resolve(null),
+  const technologies = useOptions(`skill-technologies:${companyId}:${branchId}:${revision}`, () =>
+    companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
   );
-  const load = useScopedList(`skills:${companyId}:${branchId}:${specialityId}:${revision}`, () =>
-    companyId && branchId && specialityId ? companiesApi.listSkills(companyId, branchId, specialityId, pagination) : Promise.resolve(null),
+  const load = useScopedList(`skills:${companyId}:${branchId}:${technologyId}:${revision}`, () =>
+    companyId && branchId && technologyId ? companiesApi.listSkills(companyId, branchId, technologyId, pagination) : Promise.resolve(null),
   );
   const columns: TableColumn<Skill>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
@@ -534,31 +581,30 @@ function SkillsSection({ companies, revision, onSaved }: {
   return (
     <ManagedResourceSection
       title="Habilidades"
-      description="Consulta y registra habilidades para una especialidad."
+      description="Consulta y registra habilidades para una technology."
       columns={columns}
       rows={load.data}
       loading={load.loading}
       error={load.error}
-      enabled={Boolean(companyId && branchId && specialityId)}
+      enabled={Boolean(companyId && branchId && technologyId)}
       filterFields={<>
         <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
           setCompanyId(idOf(event.target.value));
           setBranchId(undefined);
-          setSpecialityId(undefined);
+          setTechnologyId(undefined);
         }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
-          setSpecialityId(undefined);
+          setTechnologyId(undefined);
         }} disabled={!companyId} required />
-        <SelectField label="Especialidad" value={specialityId ?? ''} options={optionsOf(specialities, (item) => item.name)} onChange={(event) => setSpecialityId(idOf(event.target.value))} disabled={!branchId} required />
+        <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => setTechnologyId(idOf(event.target.value))} disabled={!branchId} required />
       </>}
-      initialForm={{ code: '', name: '', description: '' }}
+      initialForm={{ name: '', description: '' }}
       renderFields={(form, setForm) => <>
-        <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
         <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
         <Field label="Descripción" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       </>}
-      create={(form) => companyId && branchId && specialityId ? companiesApi.createSkill(companyId, branchId, specialityId, form) : Promise.resolve(null)}
+      create={(form) => companyId && branchId && technologyId ? companiesApi.createSkill(companyId, branchId, technologyId, form) : Promise.resolve(null)}
       onSaved={onSaved}
     />
   );
@@ -571,19 +617,19 @@ function SkillLevelsSection({ companies, revision, onSaved }: {
 }) {
   const [companyId, setCompanyId] = useState<Id>();
   const [branchId, setBranchId] = useState<Id>();
-  const [specialityId, setSpecialityId] = useState<Id>();
+  const [technologyId, setTechnologyId] = useState<Id>();
   const [skillId, setSkillId] = useState<Id>();
   const branches = useOptions(`level-branches:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
   );
-  const specialities = useOptions(`level-specialities:${companyId}:${branchId}:${revision}`, () =>
-    companyId && branchId ? companiesApi.listSpecialities(companyId, branchId, pagination) : Promise.resolve(null),
+  const technologies = useOptions(`level-technologies:${companyId}:${branchId}:${revision}`, () =>
+    companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
   );
-  const skills = useOptions(`level-skills:${companyId}:${branchId}:${specialityId}:${revision}`, () =>
-    companyId && branchId && specialityId ? companiesApi.listSkills(companyId, branchId, specialityId, pagination) : Promise.resolve(null),
+  const skills = useOptions(`level-skills:${companyId}:${branchId}:${technologyId}:${revision}`, () =>
+    companyId && branchId && technologyId ? companiesApi.listSkills(companyId, branchId, technologyId, pagination) : Promise.resolve(null),
   );
-  const load = useScopedList(`levels:${companyId}:${branchId}:${specialityId}:${skillId}:${revision}`, () =>
-    companyId && branchId && specialityId && skillId ? companiesApi.listSkillLevels(companyId, branchId, specialityId, skillId, pagination) : Promise.resolve(null),
+  const load = useScopedList(`levels:${companyId}:${branchId}:${technologyId}:${skillId}:${revision}`, () =>
+    companyId && branchId && technologyId && skillId ? companiesApi.listSkillLevels(companyId, branchId, technologyId, skillId, pagination) : Promise.resolve(null),
   );
   const columns: TableColumn<SkillLevel>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
@@ -598,31 +644,31 @@ function SkillLevelsSection({ companies, revision, onSaved }: {
       rows={load.data}
       loading={load.loading}
       error={load.error}
-      enabled={Boolean(companyId && branchId && specialityId && skillId)}
+      enabled={Boolean(companyId && branchId && technologyId && skillId)}
       filterFields={<>
         <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
           setCompanyId(idOf(event.target.value));
           setBranchId(undefined);
-          setSpecialityId(undefined);
+          setTechnologyId(undefined);
           setSkillId(undefined);
         }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
-          setSpecialityId(undefined);
+          setTechnologyId(undefined);
           setSkillId(undefined);
         }} disabled={!companyId} required />
-        <SelectField label="Especialidad" value={specialityId ?? ''} options={optionsOf(specialities, (item) => item.name)} onChange={(event) => {
-          setSpecialityId(idOf(event.target.value));
+        <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => {
+          setTechnologyId(idOf(event.target.value));
           setSkillId(undefined);
         }} disabled={!branchId} required />
-        <SelectField label="Habilidad" value={skillId ?? ''} options={optionsOf(skills, (item) => item.name)} onChange={(event) => setSkillId(idOf(event.target.value))} disabled={!specialityId} required />
+        <SelectField label="Habilidad" value={skillId ?? ''} options={optionsOf(skills, (item) => item.name)} onChange={(event) => setSkillId(idOf(event.target.value))} disabled={!technologyId} required />
       </>}
       initialForm={{ name: '', number: 0 }}
       renderFields={(form, setForm) => <>
         <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
         <Field label="Número" type="number" min="0" value={form.number} onChange={(event) => setForm({ ...form, number: Number(event.target.value) })} required />
       </>}
-      create={(form) => companyId && branchId && specialityId && skillId ? companiesApi.createSkillLevel(companyId, branchId, specialityId, skillId, form) : Promise.resolve(null)}
+      create={(form) => companyId && branchId && technologyId && skillId ? companiesApi.createSkillLevel(companyId, branchId, technologyId, skillId, form) : Promise.resolve(null)}
       onSaved={onSaved}
     />
   );
@@ -685,15 +731,15 @@ function DeliverablesSection({ companies, revision, onSaved }: {
 }) {
   const [companyId, setCompanyId] = useState<Id>();
   const [branchId, setBranchId] = useState<Id>();
-  const [specialityId, setSpecialityId] = useState<Id>();
+  const [technologyId, setTechnologyId] = useState<Id>();
   const branches = useOptions(`deliverable-branches:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
   );
-  const specialities = useOptions(`deliverable-specialities:${companyId}:${branchId}:${revision}`, () =>
-    companyId && branchId ? companiesApi.listSpecialities(companyId, branchId, pagination) : Promise.resolve(null),
+  const technologies = useOptions(`deliverable-technologies:${companyId}:${branchId}:${revision}`, () =>
+    companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
   );
-  const load = useScopedList(`deliverables:${companyId}:${branchId}:${specialityId}:${revision}`, () =>
-    companyId && branchId && specialityId ? companiesApi.listDeliverables(companyId, branchId, specialityId, pagination) : Promise.resolve(null),
+  const load = useScopedList(`deliverables:${companyId}:${branchId}:${technologyId}:${revision}`, () =>
+    companyId && branchId && technologyId ? companiesApi.listDeliverables(companyId, branchId, technologyId, pagination) : Promise.resolve(null),
   );
   const columns: TableColumn<Deliverable>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
@@ -704,23 +750,23 @@ function DeliverablesSection({ companies, revision, onSaved }: {
   return (
     <ManagedResourceSection
       title="Entregables"
-      description="Consulta y registra entregables para una especialidad."
+      description="Consulta y registra entregables para una technology."
       columns={columns}
       rows={load.data}
       loading={load.loading}
       error={load.error}
-      enabled={Boolean(companyId && branchId && specialityId)}
+      enabled={Boolean(companyId && branchId && technologyId)}
       filterFields={<>
         <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
           setCompanyId(idOf(event.target.value));
           setBranchId(undefined);
-          setSpecialityId(undefined);
+          setTechnologyId(undefined);
         }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
-          setSpecialityId(undefined);
+          setTechnologyId(undefined);
         }} disabled={!companyId} required />
-        <SelectField label="Especialidad" value={specialityId ?? ''} options={optionsOf(specialities, (item) => item.name)} onChange={(event) => setSpecialityId(idOf(event.target.value))} disabled={!branchId} required />
+        <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => setTechnologyId(idOf(event.target.value))} disabled={!branchId} required />
       </>}
       initialForm={{ name: '', description: '', sequence: 1 }}
       renderFields={(form, setForm) => <>
@@ -728,17 +774,17 @@ function DeliverablesSection({ companies, revision, onSaved }: {
         <Field label="Descripción" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required />
         <Field label="Secuencia" type="number" min="1" value={form.sequence} onChange={(event) => setForm({ ...form, sequence: Number(event.target.value) })} required />
       </>}
-      create={(form) => companyId && branchId && specialityId ? companiesApi.createDeliverable(companyId, branchId, specialityId, form) : Promise.resolve(null)}
+      create={(form) => companyId && branchId && technologyId ? companiesApi.createDeliverable(companyId, branchId, technologyId, form) : Promise.resolve(null)}
       onSaved={onSaved}
-      extraForm={<DeliverableUpdateForm companyId={companyId} branchId={branchId} specialityId={specialityId} deliverables={load.data} onSaved={onSaved} />}
+      extraForm={<DeliverableUpdateForm companyId={companyId} branchId={branchId} technologyId={technologyId} deliverables={load.data} onSaved={onSaved} />}
     />
   );
 }
 
-function DeliverableUpdateForm({ companyId, branchId, specialityId, deliverables, onSaved }: {
+function DeliverableUpdateForm({ companyId, branchId, technologyId, deliverables, onSaved }: {
   companyId: Id;
   branchId: Id;
-  specialityId: Id;
+  technologyId: Id;
   deliverables: Deliverable[];
   onSaved: () => void;
 }) {
@@ -757,8 +803,8 @@ function DeliverableUpdateForm({ companyId, branchId, specialityId, deliverables
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!companyId || !branchId || !specialityId || !deliverableId) return;
-    void action.execute(() => companiesApi.patchDeliverable(companyId, branchId, specialityId, deliverableId, form))
+    if (!companyId || !branchId || !technologyId || !deliverableId) return;
+    void action.execute(() => companiesApi.patchDeliverable(companyId, branchId, technologyId, deliverableId, form))
       .then((updated) => { if (updated) onSaved(); })
       .catch(() => undefined);
   }
@@ -769,7 +815,7 @@ function DeliverableUpdateForm({ companyId, branchId, specialityId, deliverables
       <Field label="Descripción" value={form.description ?? ''} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       <Field label="Secuencia" type="number" min="1" value={form.sequence ?? ''} onChange={(event) => setForm({ ...form, sequence: Number(event.target.value) })} />
       <SelectField label="Activo" value={form.isActive === undefined ? '' : String(form.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(event) => setForm({ ...form, isActive: event.target.value === 'true' })} />
-      <SubmitButton loading={action.loading} disabled={!companyId || !branchId || !specialityId || !deliverableId}>Actualizar</SubmitButton>
+      <SubmitButton loading={action.loading} disabled={!companyId || !branchId || !technologyId || !deliverableId}>Actualizar</SubmitButton>
       {action.error && <span className="form-error">{action.error}</span>}
     </form>
   );

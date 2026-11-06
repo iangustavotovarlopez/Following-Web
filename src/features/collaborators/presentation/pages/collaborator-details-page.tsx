@@ -28,8 +28,8 @@ async function loadAllRoles() {
 
   while (page <= totalPages) {
     const response = await collaboratorsApi.listRoles({ page, pageSize: 100 });
-    roles.push(...response.content);
-    totalPages = response.pagination.totalPages;
+    roles.push(...(response?.content ?? []));
+    totalPages = response?.pagination.totalPages ?? 0;
     page += 1;
   }
 
@@ -46,8 +46,8 @@ async function loadAllRoleRelations(collaboratorId: number) {
       page,
       pageSize: 100,
     });
-    relations.push(...response.content);
-    totalPages = response.pagination.totalPages;
+    relations.push(...(response?.content ?? []));
+    totalPages = response?.pagination.totalPages ?? 0;
     page += 1;
   }
 
@@ -64,8 +64,8 @@ async function loadAllSpecialities(collaboratorId: number) {
       page,
       pageSize: 100,
     });
-    specialities.push(...response.content);
-    totalPages = response.pagination.totalPages;
+    specialities.push(...(response?.content ?? []));
+    totalPages = response?.pagination.totalPages ?? 0;
     page += 1;
   }
 
@@ -116,7 +116,7 @@ export function CollaboratorDetailsPage({
         .listCollaborators({ code: collaboratorCode, page: 1, pageSize: 20 })
         .then((response) => {
           if (active) {
-            setCollaborator(response.content.find((item) => item.id === collaboratorId) ?? null);
+            setCollaborator(response?.content.find((item) => item.id === collaboratorId) ?? null);
           }
         })
         .catch(() => {
