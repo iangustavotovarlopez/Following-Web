@@ -45,6 +45,15 @@ const pagination = { page: 1, pageSize: 100 };
 const idOf = (value: string): Id => value ? Number(value) : undefined;
 const optionsOf = <T extends { id: number }>(items: T[], label: (item: T) => string) =>
   items.map((item) => ({ value: item.id, label: label(item) }));
+const collaboratorFullName = (item: Collaborator) => [
+  item.name,
+  item.secondName,
+  item.thirdName,
+  item.lastname,
+  item.secondLastname,
+  item.thirdLastname,
+].filter(Boolean).join(' ');
+const collaboratorLabel = (item: Collaborator) => `${item.code} · ${collaboratorFullName(item)}`;
 
 function useScopedList<T>(
   scopeKey: string,
@@ -133,7 +142,6 @@ function ManagedResourceSection<T, Form>({
 
 export function NestedResourceManagementSection() {
   const companies = useOptions('companies', () => companiesApi.listCompanies(pagination));
-  const collaborators = useOptions('collaborators', () => collaboratorsApi.listCollaborators(pagination));
   const [catalogRevision, setCatalogRevision] = useState(0);
   const refreshCatalogs = () => setCatalogRevision((revision) => revision + 1);
 
@@ -152,7 +160,6 @@ export function NestedResourceManagementSection() {
       <DeliverablesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <TeamMembersSection
         companies={companies}
-        collaborators={collaborators}
         revision={catalogRevision}
         onSaved={refreshCatalogs}
       />
@@ -821,9 +828,8 @@ function DeliverableUpdateForm({ companyId, branchId, technologyId, deliverables
   );
 }
 
-function TeamMembersSection({ companies, collaborators, revision, onSaved }: {
+function TeamMembersSection({ companies, revision, onSaved }: {
   companies: Company[];
-  collaborators: Collaborator[];
   revision: number;
   onSaved: () => void;
 }) {
@@ -841,13 +847,22 @@ function TeamMembersSection({ companies, collaborators, revision, onSaved }: {
   const teams = useOptions(`member-teams:${companyId}:${branchId}:${specialityId}:${revision}`, () =>
     companyId && branchId && specialityId ? companiesApi.listTeams(companyId, branchId, specialityId, pagination) : Promise.resolve(null),
   );
+  const collaborators = useScopedList(`member-collaborators:${companyId}`, () =>
+    companyId
+      ? collaboratorsApi.listCollaborators({ 'company.id': companyId, ...pagination })
+      : Promise.resolve(null),
+  );
+  const collaboratorsById = new Map(collaborators.data.map((collaborator) => [collaborator.id, collaborator]));
   const load = useScopedList(`members:${companyId}:${branchId}:${specialityId}:${teamId}:${revision}`, () =>
     companyId && branchId && specialityId && teamId ? companiesApi.listTeamMembers(companyId, branchId, specialityId, teamId, pagination) : Promise.resolve(null),
   );
   const action = useApiAction<TeamMember>();
   const columns: TableColumn<TeamMember>[] = [
     { key: 'code', label: 'Código', render: (item) => item.collaborator.code },
-    { key: 'name', label: 'Colaborador', render: (item) => item.collaborator.name },
+    { key: 'name', label: 'Colaborador', render: (item) => {
+      const collaborator = collaboratorsById.get(item.collaborator.id);
+      return collaborator ? collaboratorFullName(collaborator) : item.collaborator.name;
+    } },
     { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
   ];
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -882,8 +897,11 @@ function TeamMembersSection({ companies, collaborators, revision, onSaved }: {
         <SelectField label="Equipo" value={teamId ?? ''} options={optionsOf(teams, (item) => item.name)} onChange={(event) => setTeamId(idOf(event.target.value))} disabled={!specialityId} required />
       </div>
       <div className="inline-form">
-        <SelectField label="Colaborador" value={form.collaboratorId ?? ''} options={optionsOf(collaborators, (item) => `${item.code} · ${item.name} ${item.lastname}`)} onChange={(event) => setForm({ collaboratorId: idOf(event.target.value) })} required />
+        <SelectField label="Colaborador" value={form.collaboratorId ?? ''} options={optionsOf(collaborators.data, collaboratorLabel)} onChange={(event) => setForm({ collaboratorId: idOf(event.target.value) })} disabled={!companyId || collaborators.loading} required />
         <SubmitButton loading={action.loading} disabled={!companyId || !branchId || !specialityId || !teamId || !form.collaboratorId}>Asignar</SubmitButton>
+        {collaborators.loading && <span className="muted">Cargando colaboradores...</span>}
+        {collaborators.error && <span className="form-error">{collaborators.error}</span>}
+        {!collaborators.loading && !collaborators.error && companyId && collaborators.data.length === 0 && <span className="muted">No hay colaboradores para esta compañía.</span>}
         {action.error && <span className="form-error">{action.error}</span>}
       </div>
     </form>

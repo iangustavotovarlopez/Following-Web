@@ -15,7 +15,7 @@ import { useApiList } from '../../../../shared/hooks/use-api-list';
 
 export function CompaniesSection() {
   const load = useCallback(
-    () => companiesApi.listCompanies({ page: 1, pageSize: 20 }),
+    () => companiesApi.listCompanies({ page: 1, pageSize: 100 }),
     [],
   );
   const { data, loading, error, refresh } = useApiList(load);
@@ -128,7 +128,7 @@ export function CompaniesSection() {
         <SubmitButton>Crear estado</SubmitButton>
       </form>
       <form className="inline-form" onSubmit={submitCompanyPatch}>
-        <SelectField label="Editar compañía" value={editingCompanyId || ''} options={data.map((item) => ({ value: item.id, label: item.name }))} onChange={(event) => {
+        <SelectField label="Editar compañía" value={editingCompanyId || ''} options={data.slice(0, 20).map((item) => ({ value: item.id, label: item.name }))} onChange={(event) => {
           const id = Number(event.target.value);
           const company = data.find((item) => item.id === id);
           setEditingCompanyId(id);
@@ -160,7 +160,7 @@ export function CompaniesSection() {
       title="Companies"
       description="Consulta y alta de compañías."
       columns={columns}
-      rows={data}
+      rows={data.slice(0, 20)}
       loading={loading}
       error={error}
       form={formView}

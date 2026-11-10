@@ -397,6 +397,11 @@ button {
   background: #fff0f2;
 }
 
+.alert.warning {
+  color: #73521a;
+  background: #fff5dc;
+}
+
 .table-container {
   overflow-x: auto;
 }
@@ -445,6 +450,399 @@ tbody tr:last-child td {
   padding: 32px 24px;
   color: #728096;
   text-align: center;
+}
+
+.planning-list {
+  display: grid;
+  gap: 16px;
+  padding: 20px 24px;
+}
+
+.planning-card {
+  overflow: hidden;
+  border: 1px solid #dfe6eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.planning-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+}
+
+.planning-card-heading h3 {
+  margin: 0;
+  color: #172f3b;
+  font-size: 1.05rem;
+}
+
+.planning-counts {
+  margin: 6px 0 0;
+  color: #728096;
+  font-size: 0.82rem;
+}
+
+.planning-timeline-wrap {
+  overflow: hidden;
+  padding: 0 22px 18px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.planning-subheading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 2px;
+  color: #526673;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.planning-subheading span {
+  color: #a65c31;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.planning-timeline-track {
+  position: relative;
+  height: 54px;
+  margin: 22px 8px 10px;
+}
+
+.planning-timeline-track::before {
+  position: absolute;
+  top: 25px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: #d7e3e3;
+  content: "";
+}
+
+.planning-period-span {
+  position: absolute;
+  z-index: 1;
+  top: 22px;
+  height: 8px;
+  border-radius: 999px;
+  background: #83b9b5;
+}
+
+.planning-period-span.is-current {
+  background: #267c88;
+}
+
+.planning-timeline-point {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #267c88;
+  box-shadow: 0 0 0 2px #267c88;
+  transform: translateX(-50%);
+}
+
+.planning-today-marker {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+
+.planning-today-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #ffffff;
+  background: #a65c31;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.planning-today-line {
+  position: absolute;
+  top: 19px;
+  bottom: 0;
+  left: -1px;
+  border-left: 2px dashed #a65c31;
+}
+
+.planning-today-marker.at-start .planning-today-label {
+  transform: none;
+}
+
+.planning-today-marker.at-end .planning-today-label {
+  transform: translateX(-100%);
+}
+
+.planning-timeline-periods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planning-timeline-periods li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #e6ecef;
+  border-radius: 6px;
+  color: #728096;
+  font-size: 0.76rem;
+}
+
+.planning-timeline-periods li.is-current {
+  border-color: #9accc4;
+  background: #f0f8f7;
+}
+
+.planning-timeline-period-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 3px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #83b9b5;
+  box-shadow: 0 0 0 1px #83b9b5;
+}
+
+.planning-timeline-periods li.is-current .planning-timeline-period-dot {
+  background: #267c88;
+  box-shadow: 0 0 0 1px #267c88;
+}
+
+.planning-timeline-periods li > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.planning-timeline-periods strong {
+  color: #29364b;
+  font-size: 0.82rem;
+}
+
+.planning-timeline-start {
+  color: #267c88;
+  font-weight: 700;
+}
+
+.planning-period-status {
+  color: #176f45;
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.planning-period-status.upcoming {
+  color: #946124;
+}
+
+.planning-current-stage,
+.planning-no-dates {
+  margin: 10px 0 0;
+  color: #526673;
+  font-size: 0.8rem;
+}
+
+.planning-current-stage strong {
+  color: #1b5960;
+}
+
+.planning-period-list,
+.planning-subperiod-list,
+.planning-section-list,
+.planning-fraction-list {
+  margin: 0;
+  list-style: none;
+}
+
+.planning-period-list {
+  padding: 0 22px 12px;
+}
+
+.planning-period-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.planning-period-item:last-child {
+  border-bottom: 0;
+}
+
+.planning-level-line,
+.planning-fraction-list li {
+  display: grid;
+  grid-template-columns: 90px minmax(120px, 1.2fr) minmax(80px, 0.6fr) minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 38px;
+}
+
+.period-level-line {
+  border-left: 3px solid #267c88;
+  padding: 8px 12px;
+  background: #f0f8f7;
+}
+
+.period-level-line.is-current,
+.subperiod-level-line.is-current,
+.section-level-line.is-current {
+  border-color: #267c88;
+  background: #e7f4f1;
+}
+
+.subperiod-level-line {
+  border-left: 2px solid #78b9ad;
+  padding: 6px 11px;
+}
+
+.section-level-line {
+  border-left: 2px solid #c5d3d8;
+  padding: 5px 10px;
+}
+
+.planning-level-label {
+  color: #728096;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.planning-level-line strong,
+.planning-fraction-list strong {
+  color: #29364b;
+  font-size: 0.86rem;
+}
+
+.planning-code {
+  color: #66748a;
+  font-size: 0.78rem;
+}
+
+.planning-date-range {
+  color: #526673;
+  font-size: 0.8rem;
+  white-space: normal;
+}
+
+.planning-additional {
+  border-radius: 4px;
+  padding: 3px 7px;
+  color: #76551e;
+  background: #fff0cf;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.planning-subperiod-list {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0 18px;
+  padding: 0 0 0 16px;
+  border-left: 1px solid #dce5e8;
+}
+
+.planning-section-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0 12px;
+  padding: 0 0 0 14px;
+  border-left: 1px solid #e5eaed;
+}
+
+.planning-fraction-list {
+  display: grid;
+  gap: 5px;
+  margin: 6px 0 0 12px;
+  padding: 0 0 0 14px;
+}
+
+.planning-fraction-list li {
+  min-height: 30px;
+}
+
+.planning-fraction-list li.is-current {
+  border-radius: 4px;
+  background: #e7f4f1;
+}
+
+.planning-no-children {
+  margin: 7px 0 0 18px;
+  color: #8793a2;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 920px) {
+  .planning-list {
+    padding: 14px 12px;
+  }
+
+  .planning-card-heading {
+    padding: 16px;
+  }
+
+  .planning-timeline-wrap {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .planning-timeline-periods {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .planning-period-list {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .planning-level-line,
+  .planning-fraction-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 10px;
+  }
+
+  .planning-level-label,
+  .planning-date-range {
+    grid-column: 1 / -1;
+  }
+
+  .planning-level-line > .badge,
+  .planning-fraction-list .badge {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .planning-subperiod-list {
+    margin-left: 8px;
+    padding-left: 11px;
+  }
+
+  .planning-section-list,
+  .planning-fraction-list {
+    margin-left: 5px;
+    padding-left: 10px;
+  }
 }
 
 @media (max-width: 920px) {

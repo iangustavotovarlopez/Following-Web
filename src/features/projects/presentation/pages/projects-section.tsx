@@ -55,7 +55,7 @@ export function ProjectsSection() {
       render: (item) => (
         <a
           className="button primary details-link"
-          href={`/?projectId=${item.id}&projectCode=${encodeURIComponent(item.code)}`}
+          href={`/?projectId=${item.id}&projectCode=${encodeURIComponent(item.code)}&projectName=${encodeURIComponent(item.name)}&companyId=${item.company.id}`}
           target="_blank"
           rel="noreferrer"
         >

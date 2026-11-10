@@ -47,8 +47,8 @@ export interface IncludeBlock {
 export interface CollaboratorQuery extends PaginationQuery {
   code?: string;
   name?: string;
-  companyId?: number;
-  stateId?: number;
+  'company.id'?: number;
+  'state.id'?: number;
   includes?: string;
 }
 

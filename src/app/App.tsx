@@ -22,10 +22,13 @@ export function App() {
   }
   const projectId = Number(searchParams.get('projectId'));
   if (Number.isInteger(projectId) && projectId > 0) {
+    const companyId = Number(searchParams.get('companyId'));
     return (
       <ProjectDetailsPage
         projectId={projectId}
         projectCode={searchParams.get('projectCode') ?? ''}
+        projectName={searchParams.get('projectName') ?? undefined}
+        companyId={Number.isInteger(companyId) && companyId > 0 ? companyId : undefined}
       />
     );
   }

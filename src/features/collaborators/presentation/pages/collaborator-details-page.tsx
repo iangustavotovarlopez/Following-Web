@@ -5,8 +5,15 @@ import {
   type CollaboratorRole,
   type CollaboratorRoleRelation,
   type CollaboratorSpeciality,
+  type CollaboratorTechnology,
 } from '../../infrastructure/api';
+import { companiesApi, type Branch, type Technology } from '../../../companies/infrastructure/api';
 import { ActiveBadge } from '../../../../shared/components/api-section';
+
+type CollaboratorTechnologyDetail = CollaboratorTechnology & {
+  technologyName: string;
+  technologyCode: string;
+};
 
 function collaboratorName(collaborator: Collaborator) {
   return [
@@ -72,6 +79,30 @@ async function loadAllSpecialities(collaboratorId: number) {
   return specialities;
 }
 
+async function loadAllTechnologies(collaboratorId: number) {
+  let page = 1;
+  let totalPages = 1;
+  const technologies: CollaboratorTechnology[] = [];
+
+  while (page <= totalPages) {
+    const response = await collaboratorsApi.listTechnologies(collaboratorId, { page, pageSize: 100 });
+    technologies.push(...(response?.content ?? []));
+    totalPages = response?.pagination.totalPages ?? 0;
+    page += 1;
+  }
+
+  return technologies;
+}
+
+async function loadTechnologyCatalog(companyId: number) {
+  const branchResponse = await companiesApi.listBranches(companyId, { page: 1, pageSize: 100 });
+  const branches: Branch[] = branchResponse?.content ?? [];
+  const technologyResponses = await Promise.all(
+    branches.map((branch) => companiesApi.listTechnologies(companyId, branch.id, { page: 1, pageSize: 100 })),
+  );
+  return new Map<number, Technology>(technologyResponses.flatMap((response) => response?.content ?? []).map((technology) => [technology.id, technology]));
+}
+
 interface CollaboratorDetailsPageProps {
   collaboratorId: number;
   collaboratorCode: string;
@@ -85,11 +116,21 @@ export function CollaboratorDetailsPage({
   const [roles, setRoles] = useState<CollaboratorRole[]>([]);
   const [relations, setRelations] = useState<CollaboratorRoleRelation[]>([]);
   const [specialities, setSpecialities] = useState<CollaboratorSpeciality[]>([]);
+  const [technologies, setTechnologies] = useState<CollaboratorTechnologyDetail[]>([]);
+  const [technologiesLoading, setTechnologiesLoading] = useState(true);
+  const [technologiesError, setTechnologiesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setTechnologiesLoading(true);
+    setTechnologiesError(null);
+
+    const collaboratorRequest = collaboratorCode.trim().length >= 3
+      ? collaboratorsApi.listCollaborators({ code: collaboratorCode, page: 1, pageSize: 20 }).catch(() => null)
+      : Promise.resolve(null);
 
     Promise.all([
       loadAllRoles(),
@@ -111,18 +152,30 @@ export function CollaboratorDetailsPage({
         if (active) setLoading(false);
       });
 
-    if (collaboratorCode.trim().length >= 3) {
-      collaboratorsApi
-        .listCollaborators({ code: collaboratorCode, page: 1, pageSize: 20 })
-        .then((response) => {
-          if (active) {
-            setCollaborator(response?.content.find((item) => item.id === collaboratorId) ?? null);
-          }
-        })
-        .catch(() => {
-          if (active) setCollaborator(null);
-        });
-    }
+    collaboratorRequest.then((response) => {
+      if (active) setCollaborator(response?.content.find((item) => item.id === collaboratorId) ?? null);
+    });
+
+    Promise.all([loadAllTechnologies(collaboratorId), collaboratorRequest])
+      .then(async ([technologyRelations, collaboratorResponse]) => {
+        const foundCollaborator = collaboratorResponse?.content.find((item) => item.id === collaboratorId);
+        const catalog = technologyRelations.length && foundCollaborator?.company.id
+          ? await loadTechnologyCatalog(foundCollaborator.company.id)
+          : new Map<number, Technology>();
+        if (!active) return;
+        setTechnologies(technologyRelations.map((relation) => {
+          const technology = catalog.get(relation.technology.id);
+          return {
+            ...relation,
+            technologyName: technology?.name ?? `Technology #${relation.technology.id}`,
+            technologyCode: technology?.code ?? '—',
+          };
+        }));
+      })
+      .catch((cause) => {
+        if (active) setTechnologiesError(cause instanceof Error ? cause.message : 'No se pudieron consultar las tecnologías');
+      })
+      .finally(() => { if (active) setTechnologiesLoading(false); });
 
     return () => {
       active = false;
@@ -216,6 +269,44 @@ export function CollaboratorDetailsPage({
                   {specialities.map((relation) => (
                     <tr key={relation.id}>
                       <td>{relation.speciality.name}</td>
+                      <td><ActiveBadge active={relation.isActive} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="resource-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Detalle del colaborador</p>
+              <h2>Tecnologías</h2>
+              <p className="muted">Tecnologías asignadas a este colaborador.</p>
+            </div>
+          </div>
+
+          {technologiesError && <div className="alert error">{technologiesError}</div>}
+          {technologiesLoading ? (
+            <div className="empty-state">Consultando tecnologías...</div>
+          ) : technologiesError ? null : technologies.length === 0 ? (
+            <div className="empty-state">Este colaborador aún no tiene tecnologías asignadas.</div>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Tecnología</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {technologies.map((relation) => (
+                    <tr key={relation.id}>
+                      <td>{relation.technologyCode}</td>
+                      <td>{relation.technologyName}</td>
                       <td><ActiveBadge active={relation.isActive} /></td>
                     </tr>
                   ))}
