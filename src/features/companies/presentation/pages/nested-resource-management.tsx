@@ -25,7 +25,6 @@ import { useApiAction } from '../../../../shared/hooks/use-api-action';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
 import {
   companiesApi,
-  type Branch,
   type Company,
   type Deliverable,
   type DeliverablePatchRequest,
@@ -39,7 +38,6 @@ import {
   type Subperiod,
   type Team,
   type TeamMember,
-  type Technology,
 } from '../../infrastructure/api';
 import { collaboratorsApi, type Collaborator } from '../../../collaborators/infrastructure/api';
 
@@ -154,8 +152,6 @@ export function NestedResourceManagementSection() {
     <div className="resource-grid">
       <PeriodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <SubperiodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <BranchesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <TechnologiesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <SpecialitiesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <SectionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
       <FractionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
@@ -313,42 +309,6 @@ function SubperiodsSection({ companies, revision, onSaved }: {
   );
 }
 
-function BranchesSection({ companies, revision, onSaved }: {
-  companies: Company[];
-  revision: number;
-  onSaved: () => void;
-}) {
-  const [companyId, setCompanyId] = useState<Id>();
-  const load = useScopedList(`branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
-  const columns: TableColumn<Branch>[] = [
-    { key: 'name', label: 'Nombre', render: (item) => item.name },
-    { key: 'description', label: 'Descripción', render: (item) => item.description ?? '—' },
-    { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
-  ];
-
-  return (
-    <ManagedResourceSection
-      title="Branches"
-      description="Consulta y registra branches para una compañía."
-      columns={columns}
-      rows={load.data}
-      loading={load.loading}
-      error={load.error}
-      enabled={Boolean(companyId)}
-      filterFields={<SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => setCompanyId(idOf(event.target.value))} required />}
-      initialForm={{ name: '', description: '' }}
-      renderFields={(form, setForm) => <>
-        <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-        <Field label="Descripción" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-      </>}
-      create={(form) => companyId ? companiesApi.createBranch(companyId, form) : Promise.resolve(null)}
-      onSaved={onSaved}
-    />
-  );
-}
-
 function SpecialitiesSection({ companies, revision, onSaved }: {
   companies: Company[];
   revision: number;
@@ -392,51 +352,6 @@ function SpecialitiesSection({ companies, revision, onSaved }: {
         <Field label="Descripción" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       </>}
       create={(form) => companyId && branchId ? companiesApi.createSpeciality(companyId, branchId, form) : Promise.resolve(null)}
-      onSaved={onSaved}
-    />
-  );
-}
-
-function TechnologiesSection({ companies, revision, onSaved }: {
-  companies: Company[];
-  revision: number;
-  onSaved: () => void;
-}) {
-  const [companyId, setCompanyId] = useState<Id>();
-  const [branchId, setBranchId] = useState<Id>();
-  const branches = useOptions(`technology-branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
-  const load = useScopedList(`technologies:${companyId}:${branchId}:${revision}`, () =>
-    companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
-  );
-  const columns: TableColumn<Technology>[] = [
-    { key: 'code', label: 'Código', render: (item) => item.code },
-    { key: 'name', label: 'Nombre', render: (item) => item.name },
-    { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
-  ];
-  return (
-    <ManagedResourceSection
-      title="Technologies"
-      description="Consulta y registra technologies dentro de una branch."
-      columns={columns}
-      rows={load.data}
-      loading={load.loading}
-      error={load.error}
-      enabled={Boolean(companyId && branchId)}
-      filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-        }} required />
-        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => setBranchId(idOf(event.target.value))} disabled={!companyId} required />
-      </>}
-      initialForm={{ code: '', name: '' }}
-      renderFields={(form, setForm) => <>
-        <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
-        <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-      </>}
-      create={(form) => companyId && branchId ? companiesApi.createTechnology(companyId, branchId, form) : Promise.resolve(null)}
       onSaved={onSaved}
     />
   );

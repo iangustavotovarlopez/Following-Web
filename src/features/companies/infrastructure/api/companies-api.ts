@@ -103,6 +103,16 @@ export interface BranchCreateRequest {
   description?: string;
 }
 
+export interface BranchPatchRequest {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface BranchQuery extends PaginationQuery {
+  name?: string;
+}
+
 export interface Technology {
   id: number;
   code: string;
@@ -113,6 +123,17 @@ export interface Technology {
 export interface TechnologyCreateRequest {
   code: string;
   name: string;
+}
+
+export interface TechnologyPatchRequest {
+  code?: string;
+  name?: string;
+  isActive?: boolean;
+}
+
+export interface TechnologyQuery extends PaginationQuery {
+  code?: string;
+  name?: string;
 }
 
 export interface Speciality {
@@ -237,6 +258,10 @@ export class CompaniesApi {
     return this.client.patch<Company>(`/companies/v0/companies/${id}`, body);
   }
 
+  deleteCompany(id: number) {
+    return this.client.delete(`/companies/v0/companies/${id}`);
+  }
+
   listPeriods(companyId: number, query: PaginationQuery = {}) {
     return this.client.get<PageResponse<Period>>(
       `/companies/v0/companies/${companyId}/periods`,
@@ -272,7 +297,7 @@ export class CompaniesApi {
     );
   }
 
-  listBranches(companyId: number, query: PaginationQuery = {}) {
+  listBranches(companyId: number, query: BranchQuery = {}) {
     return this.client.get<PageResponse<Branch>>(
       `/companies/v0/companies/${companyId}/branches`,
       query,
@@ -286,7 +311,24 @@ export class CompaniesApi {
     );
   }
 
-  listTechnologies(companyId: number, branchId: number, query: PaginationQuery = {}) {
+  patchBranch(companyId: number, branchId: number, body: BranchPatchRequest) {
+    return this.client.patch<Branch>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}`,
+      body,
+    );
+  }
+
+  deleteBranch(companyId: number, branchId: number) {
+    return this.client.delete(
+      `/companies/v0/companies/${companyId}/branches/${branchId}`,
+    );
+  }
+
+  listTechnologies(
+    companyId: number,
+    branchId: number,
+    query: TechnologyQuery = {},
+  ) {
     return this.client.get<PageResponse<Technology>>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/technologies`,
       query,
@@ -297,6 +339,24 @@ export class CompaniesApi {
     return this.client.post<Technology>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/technologies`,
       body,
+    );
+  }
+
+  patchTechnology(
+    companyId: number,
+    branchId: number,
+    technologyId: number,
+    body: TechnologyPatchRequest,
+  ) {
+    return this.client.patch<Technology>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}`,
+      body,
+    );
+  }
+
+  deleteTechnology(companyId: number, branchId: number, technologyId: number) {
+    return this.client.delete(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}`,
     );
   }
 
