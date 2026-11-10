@@ -8,6 +8,7 @@ import { ProjectDetailsPage } from '../features/projects/presentation/pages/proj
 import { ServicesSection } from '../features/services/presentation/pages/services-section';
 import { NestedResourceManagementSection } from '../features/companies/presentation/pages/nested-resource-management';
 import { AdvancedRelationshipsManagement } from '../features/relations/presentation/pages/advanced-relationships-management';
+import { StaffingSection } from '../features/staffing/presentation/pages/staffing-section';
 
 export function App() {
   const searchParams = new URLSearchParams(window.location.search);
@@ -52,6 +53,7 @@ export function App() {
         <CollaboratorRolesSection />
         <CollaboratorRoleAssignmentsSection />
         <ProjectsSection />
+        <StaffingSection />
         <ServicesSection />
         <NestedResourceManagementSection />
         <AdvancedRelationshipsManagement />
