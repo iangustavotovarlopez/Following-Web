@@ -9,6 +9,11 @@ export interface StaffingReference {
   id: number;
 }
 
+export interface StaffingStateReference extends StaffingReference {
+  name: string;
+  isActive: boolean;
+}
+
 export interface StaffingQuery extends PaginationQuery {
   projectId?: number;
   periodId?: number;
@@ -19,6 +24,16 @@ export interface StaffingQuery extends PaginationQuery {
   staffingStateId?: number;
 }
 
+export interface StaffingState {
+  id: number;
+  name: string;
+  isActive: boolean;
+}
+
+export interface StaffingStateQuery extends PaginationQuery {
+  isActive?: boolean;
+}
+
 export interface CreateStaffingRequest {
   period: StaffingReference;
   subperiod: StaffingReference;
@@ -27,13 +42,14 @@ export interface CreateStaffingRequest {
   project: StaffingReference;
   speciality: StaffingReference;
   capacity: number;
-  request?: string;
-  staffingState: StaffingReference;
+  request: string;
+  state: StaffingReference;
   registeredDate: string;
 }
 
-export interface Staffing extends CreateStaffingRequest {
+export interface Staffing extends Omit<CreateStaffingRequest, 'state'> {
   id: number;
+  staffingState: StaffingStateReference;
   isActive: boolean;
 }
 
@@ -42,6 +58,10 @@ export class StaffingApi {
 
   listStaffing(query: StaffingQuery = {}) {
     return this.client.get<PageResponse<Staffing>>('/staffing/v0/staffing', query);
+  }
+
+  listStates(query: StaffingStateQuery = {}) {
+    return this.client.get<PageResponse<StaffingState>>('/staffing/v0/states', query);
   }
 
   createStaffing(body: CreateStaffingRequest) {

@@ -9,28 +9,33 @@ import { ServicesSection } from '../features/services/presentation/pages/service
 import { NestedResourceManagementSection } from '../features/companies/presentation/pages/nested-resource-management';
 import { AdvancedRelationshipsManagement } from '../features/relations/presentation/pages/advanced-relationships-management';
 import { StaffingSection } from '../features/staffing/presentation/pages/staffing-section';
+import { ApiResponseExport } from '../shared/components/api-response-export';
 
 export function App() {
   const searchParams = new URLSearchParams(window.location.search);
   const collaboratorId = Number(searchParams.get('collaboratorId'));
   if (Number.isInteger(collaboratorId) && collaboratorId > 0) {
     return (
-      <CollaboratorDetailsPage
-        collaboratorId={collaboratorId}
-        collaboratorCode={searchParams.get('collaboratorCode') ?? ''}
-      />
+      <>
+        <ApiResponseExport floating />
+        <CollaboratorDetailsPage
+          collaboratorId={collaboratorId}
+          collaboratorCode={searchParams.get('collaboratorCode') ?? ''}
+        />
+      </>
     );
   }
   const projectId = Number(searchParams.get('projectId'));
   if (Number.isInteger(projectId) && projectId > 0) {
-    const companyId = Number(searchParams.get('companyId'));
     return (
-      <ProjectDetailsPage
-        projectId={projectId}
-        projectCode={searchParams.get('projectCode') ?? ''}
-        projectName={searchParams.get('projectName') ?? undefined}
-        companyId={Number.isInteger(companyId) && companyId > 0 ? companyId : undefined}
-      />
+      <>
+        <ApiResponseExport floating />
+        <ProjectDetailsPage
+          projectId={projectId}
+          projectCode={searchParams.get('projectCode') ?? ''}
+          projectName={searchParams.get('projectName') ?? undefined}
+        />
+      </>
     );
   }
 
@@ -44,7 +49,10 @@ export function App() {
             Consulta y registra información mediante la API de Following.
           </p>
         </div>
-        <span className="connection-status">API local</span>
+        <div className="app-header-actions">
+          <ApiResponseExport />
+          <span className="connection-status">API local</span>
+        </div>
       </header>
 
       <main className="dashboard">

@@ -39,6 +39,12 @@ API para:
 - Planning de proyectos.
 - Ambientes y metadata asignados a servicios.
 
+La sección de staffing carga los estados desde `/staffing/v0/states` para el
+selector de alta y permite filtrar las solicitudes por los IDs de proyecto,
+periodo, subperiodo, sección, fracción, especialidad y estado. La vista de
+detalle de proyecto consume las fechas que devuelve la API dentro de la
+planeación, sin volver a consultar cada catálogo de periodos y secciones.
+
 ## Estándar de formularios
 
 Los formularios del proyecto deben conservar el patrón visual de la sección

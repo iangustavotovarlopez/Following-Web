@@ -14,6 +14,7 @@ interface ApiSectionProps<T> {
   loading: boolean;
   error: string | null;
   form: ReactNode;
+  filters?: ReactNode;
 }
 
 export function ApiSection<T>({
@@ -24,6 +25,7 @@ export function ApiSection<T>({
   loading,
   error,
   form,
+  filters,
 }: ApiSectionProps<T>) {
   return (
     <section className="resource-section">
@@ -36,6 +38,7 @@ export function ApiSection<T>({
         {form}
       </div>
 
+      {filters && <div className="api-section-filters">{filters}</div>}
       {error && <div className="alert error">{error}</div>}
       {loading ? (
         <div className="empty-state">Consultando API...</div>
@@ -73,4 +76,15 @@ export function ActiveBadge({ active }: { active: boolean }) {
       {active ? 'Activo' : 'Inactivo'}
     </span>
   );
+}
+
+export function StateBadge({ name }: { name: string }) {
+  const normalizedName = name.trim().toUpperCase();
+  const className = normalizedName === 'ACTIVO'
+    ? 'badge active'
+    : normalizedName === 'INACTIVO'
+      ? 'badge inactive'
+      : 'badge neutral';
+
+  return <span className={className}>{name}</span>;
 }

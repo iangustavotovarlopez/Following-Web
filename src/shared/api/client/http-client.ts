@@ -1,8 +1,16 @@
 import { ApiError, ProblemDetail } from './api-error';
+import { recordApiResponse } from './api-response-log';
 
 export interface HttpClientOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+}
+
+export const API_MUTATION_EVENT = 'following:api-mutation';
+
+export interface ApiMutationDetail {
+  method: 'POST' | 'PATCH' | 'DELETE';
+  path: string;
 }
 
 export class HttpClient {
@@ -39,18 +47,29 @@ export class HttpClient {
   async post<T>(path: string, body?: unknown): Promise<T | null> {
     const response = await this.request<T>(path, { method: 'POST', body });
     this.getCache.clear();
+    this.notifyMutation('POST', path);
     return response;
   }
 
   async patch<T>(path: string, body?: unknown): Promise<T | null> {
     const response = await this.request<T>(path, { method: 'PATCH', body });
     this.getCache.clear();
+    this.notifyMutation('PATCH', path);
     return response;
   }
 
   async delete(path: string): Promise<void> {
     await this.request<unknown>(path, { method: 'DELETE' });
     this.getCache.clear();
+    this.notifyMutation('DELETE', path);
+  }
+
+  private notifyMutation(method: ApiMutationDetail['method'], path: string) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent<ApiMutationDetail>(API_MUTATION_EVENT, {
+        detail: { method, path },
+      }));
+    }
   }
 
   private buildUrl(path: string, query?: object) {
@@ -93,11 +112,26 @@ export class HttpClient {
       throw new ApiError(response.status, problem);
     }
     if (response.status === 204) {
+      recordApiResponse({
+        capturedAt: new Date().toISOString(),
+        method: options.method,
+        path: `${url.pathname}${url.search}`,
+        status: response.status,
+        response: null,
+      });
       return null;
     }
 
     const text = await response.text();
-    return text ? (JSON.parse(text) as T) : null;
+    const data = text ? (JSON.parse(text) as T) : null;
+    recordApiResponse({
+      capturedAt: new Date().toISOString(),
+      method: options.method,
+      path: `${url.pathname}${url.search}`,
+      status: response.status,
+      response: data,
+    });
+    return data;
   }
 }
 

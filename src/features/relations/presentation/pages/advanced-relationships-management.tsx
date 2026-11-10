@@ -25,6 +25,7 @@ import {
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
+import { API_MUTATION_EVENT, type ApiMutationDetail } from '../../../../shared/api';
 import { useApiAction } from '../../../../shared/hooks/use-api-action';
 
 type Id = number | undefined;
@@ -100,26 +101,24 @@ function BaseForm({ children, onSubmit }: { children: ReactNode; onSubmit: (even
 
 export function AdvancedRelationshipsManagement() {
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [metadata, setMetadata] = useState<ServiceMetadata[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [planningRevision, setPlanningRevision] = useState(0);
+  const [collaboratorRevision, setCollaboratorRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
     Promise.all([
       companiesApi.listCompanies(pagination),
-      collaboratorsApi.listCollaborators(pagination),
       projectsApi.listProjects(pagination),
       servicesApi.listEnvironments(pagination),
       servicesApi.listMetadata(pagination),
     ])
-      .then(([companyResponse, collaboratorResponse, projectResponse, environmentResponse, metadataResponse]) => {
+      .then(([companyResponse, projectResponse, environmentResponse, metadataResponse]) => {
         if (!active) return;
         setCompanies(companyResponse?.content ?? []);
-        setCollaborators(collaboratorResponse?.content ?? []);
         setProjects(projectResponse?.content ?? []);
         setEnvironments(environmentResponse?.content ?? []);
         setMetadata(metadataResponse?.content ?? []);
@@ -130,13 +129,24 @@ export function AdvancedRelationshipsManagement() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    function handleMutation(event: Event) {
+      const { path } = (event as CustomEvent<ApiMutationDetail>).detail;
+      if (path === '/collaborators/v0/collaborators' || /^\/collaborators\/v0\/collaborators\/\d+$/.test(path)) {
+        setCollaboratorRevision((current) => current + 1);
+      }
+    }
+    window.addEventListener(API_MUTATION_EVENT, handleMutation);
+    return () => window.removeEventListener(API_MUTATION_EVENT, handleMutation);
+  }, []);
+
   const refreshPlannings = () => setPlanningRevision((revision) => revision + 1);
 
   return (
     <div className="resource-grid">
       {catalogError && <div className="alert error">{catalogError}</div>}
-      <CollaboratorTechnologySection companies={companies} collaborators={collaborators} />
-      <CollaboratorSkillLevelSection companies={companies} collaborators={collaborators} />
+      <CollaboratorTechnologySection companies={companies} collaboratorRevision={collaboratorRevision} />
+      <CollaboratorSkillLevelSection companies={companies} collaboratorRevision={collaboratorRevision} />
       <CreatePlanningSection projects={projects} onCreated={refreshPlannings} />
       <PlanningPeriodSection projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
       <PlanningSectionAssignment projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
@@ -146,9 +156,9 @@ export function AdvancedRelationshipsManagement() {
   );
 }
 
-function CollaboratorTechnologySection({ companies, collaborators }: {
+function CollaboratorTechnologySection({ companies, collaboratorRevision }: {
   companies: Company[];
-  collaborators: Collaborator[];
+  collaboratorRevision: number;
 }) {
   const [companyId, setCompanyId] = useState<Id>();
   const [branchId, setBranchId] = useState<Id>();
@@ -159,6 +169,9 @@ function CollaboratorTechnologySection({ companies, collaborators }: {
   );
   const technologies = useCatalog<Technology>(`technologies:${companyId}:${branchId}`, Boolean(companyId && branchId), () =>
     companiesApi.listTechnologies(companyId!, branchId!, pagination).then((response) => response?.content ?? []),
+  );
+  const collaborators = useCatalog<Collaborator>(`collaborators:${companyId}:${collaboratorRevision}`, Boolean(companyId), () =>
+    collaboratorsApi.listCollaborators({ 'company.id': companyId!, ...pagination }).then((response) => response?.content ?? []),
   );
   const action = useApiAction<CollaboratorTechnology>();
 
@@ -176,25 +189,27 @@ function CollaboratorTechnologySection({ companies, collaborators }: {
           setCompanyId(idOf(event.target.value));
           setBranchId(undefined);
           setTechnologyId(undefined);
+          setCollaboratorId(undefined);
         }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches.items, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setTechnologyId(undefined);
         }} disabled={!companyId} required />
         <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies.items, (item) => item.name)} onChange={(event) => setTechnologyId(idOf(event.target.value))} disabled={!branchId} required />
-        <SelectField label="Colaborador" value={collaboratorId ?? ''} options={optionsOf(collaborators, (item) => `${item.code} · ${item.name} ${item.lastname}`)} onChange={(event) => setCollaboratorId(idOf(event.target.value))} required />
+        <SelectField label="Colaborador" value={collaboratorId ?? ''} options={optionsOf(collaborators.items, (item) => `${item.code} · ${item.name} ${item.lastname}`)} onChange={(event) => setCollaboratorId(idOf(event.target.value))} disabled={!companyId || collaborators.loading} required />
         <SubmitButton loading={action.loading} disabled={!collaboratorId || !technologyId}>Asignar</SubmitButton>
         {branches.error && <span className="form-error">{branches.error}</span>}
         {technologies.error && <span className="form-error">{technologies.error}</span>}
+        {collaborators.error && <span className="form-error">{collaborators.error}</span>}
         <ActionMessage error={action.error} result={action.result} />
       </BaseForm>
     </RelationSection>
   );
 }
 
-function CollaboratorSkillLevelSection({ companies, collaborators }: {
+function CollaboratorSkillLevelSection({ companies, collaboratorRevision }: {
   companies: Company[];
-  collaborators: Collaborator[];
+  collaboratorRevision: number;
 }) {
   const [companyId, setCompanyId] = useState<Id>();
   const [branchId, setBranchId] = useState<Id>();
@@ -214,6 +229,9 @@ function CollaboratorSkillLevelSection({ companies, collaborators }: {
   const levels = useCatalog<SkillLevel>(`levels:${companyId}:${branchId}:${technologyId}:${skillId}`, Boolean(companyId && branchId && technologyId && skillId), () =>
     companiesApi.listSkillLevels(companyId!, branchId!, technologyId!, skillId!, pagination).then((response) => response?.content ?? []),
   );
+  const collaborators = useCatalog<Collaborator>(`skill-collaborators:${companyId}:${collaboratorRevision}`, Boolean(companyId), () =>
+    collaboratorsApi.listCollaborators({ 'company.id': companyId!, ...pagination }).then((response) => response?.content ?? []),
+  );
   const action = useApiAction<CollaboratorTechnologySkill>();
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -232,6 +250,7 @@ function CollaboratorSkillLevelSection({ companies, collaborators }: {
           setTechnologyId(undefined);
           setSkillId(undefined);
           setLevelId(undefined);
+          setCollaboratorId(undefined);
         }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches.items, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
@@ -249,12 +268,13 @@ function CollaboratorSkillLevelSection({ companies, collaborators }: {
           setLevelId(undefined);
         }} disabled={!technologyId} required />
         <SelectField label="Nivel" value={levelId ?? ''} options={optionsOf(levels.items, (item) => item.name)} onChange={(event) => setLevelId(idOf(event.target.value))} disabled={!skillId} required />
-        <SelectField label="Colaborador" value={collaboratorId ?? ''} options={optionsOf(collaborators, (item) => `${item.code} · ${item.name} ${item.lastname}`)} onChange={(event) => setCollaboratorId(idOf(event.target.value))} required />
+        <SelectField label="Colaborador" value={collaboratorId ?? ''} options={optionsOf(collaborators.items, (item) => `${item.code} · ${item.name} ${item.lastname}`)} onChange={(event) => setCollaboratorId(idOf(event.target.value))} disabled={!companyId || collaborators.loading} required />
         <SubmitButton loading={action.loading} disabled={!collaboratorId || !technologyId || !skillId || !levelId}>Asignar nivel</SubmitButton>
         {branches.error && <span className="form-error">{branches.error}</span>}
         {technologies.error && <span className="form-error">{technologies.error}</span>}
         {skills.error && <span className="form-error">{skills.error}</span>}
         {levels.error && <span className="form-error">{levels.error}</span>}
+        {collaborators.error && <span className="form-error">{collaborators.error}</span>}
         <ActionMessage error={action.error} result={action.result} />
       </BaseForm>
     </RelationSection>

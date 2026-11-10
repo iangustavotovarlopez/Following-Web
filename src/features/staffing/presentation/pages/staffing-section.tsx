@@ -21,6 +21,8 @@ import {
   staffingApi,
   type CreateStaffingRequest,
   type Staffing,
+  type StaffingQuery,
+  type StaffingState,
 } from '../../infrastructure/api/staffing-api';
 
 const pagination = { page: 1, pageSize: 100 };
@@ -44,6 +46,27 @@ interface StaffingFormState {
   staffingStateId: string;
   registeredDate: string;
 }
+
+type StaffingFilterForm = Record<
+  | 'projectId'
+  | 'periodId'
+  | 'subperiodId'
+  | 'sectionId'
+  | 'fractionId'
+  | 'specialityId'
+  | 'staffingStateId',
+  string
+>;
+
+const emptyStaffingFilters: StaffingFilterForm = {
+  projectId: '',
+  periodId: '',
+  subperiodId: '',
+  sectionId: '',
+  fractionId: '',
+  specialityId: '',
+  staffingStateId: '',
+};
 
 function newStaffingForm(): StaffingFormState {
   const today = new Date();
@@ -109,12 +132,32 @@ function referenceId(value: string) {
 }
 
 export function StaffingSection() {
-  const loadStaffing = useCallback(() => staffingApi.listStaffing(pagination), []);
+  const [filterForm, setFilterForm] = useState<StaffingFilterForm>(emptyStaffingFilters);
+  const [filters, setFilters] = useState<StaffingFilterForm>(emptyStaffingFilters);
+  const loadStaffing = useCallback(() => {
+    const query: StaffingQuery = {
+      projectId: referenceId(filters.projectId),
+      periodId: referenceId(filters.periodId),
+      subperiodId: referenceId(filters.subperiodId),
+      sectionId: referenceId(filters.sectionId),
+      fractionId: referenceId(filters.fractionId),
+      specialityId: referenceId(filters.specialityId),
+      staffingStateId: referenceId(filters.staffingStateId),
+      ...pagination,
+    };
+    return staffingApi.listStaffing(query);
+  }, [filters]);
   const staffing = useApiList(loadStaffing);
   const loadProjects = useCallback(() => projectsApi.listProjects(pagination), []);
   const projects = useApiList(loadProjects);
   const action = useApiAction<Staffing>();
   const [form, setForm] = useState<StaffingFormState>(newStaffingForm);
+  const staffingStates = useCatalog<StaffingState>(
+    'staffing-states',
+    true,
+    () => staffingApi.listStates({ ...pagination }),
+  );
+  const activeStaffingStates = staffingStates.items.filter((state) => state.isActive);
 
   const selectedProject = projects.data.find((project) => String(project.id) === form.projectId);
   const companyId = selectedProject?.company.id;
@@ -184,8 +227,8 @@ export function StaffingSection() {
       fraction: { id: selectedFractionId },
       speciality: { id: specialityId },
       capacity: Number(form.capacity),
-      request: form.request.trim() || undefined,
-      staffingState: { id: staffingStateId },
+      request: form.request.trim(),
+      state: { id: staffingStateId },
       registeredDate: form.registeredDate,
     };
 
@@ -206,11 +249,11 @@ export function StaffingSection() {
     { key: 'speciality', label: 'Especialidad', render: (item: Staffing) => `#${item.speciality.id}` },
     { key: 'capacity', label: 'Capacidad', render: (item: Staffing) => item.capacity },
     { key: 'request', label: 'Solicitud', render: (item: Staffing) => item.request || '—' },
-    { key: 'state', label: 'ID estado', render: (item: Staffing) => item.staffingState.id },
+    { key: 'state', label: 'Estado', render: (item: Staffing) => item.staffingState.name },
     { key: 'registeredDate', label: 'Fecha', render: (item: Staffing) => item.registeredDate },
     { key: 'active', label: 'Estado', render: (item: Staffing) => <ActiveBadge active={item.isActive} /> },
   ];
-  const catalogErrors = [periods.error, subperiods.error, sections.error, fractions.error, branches.error, specialities.error].filter((error): error is string => Boolean(error));
+  const catalogErrors = [periods.error, subperiods.error, sections.error, fractions.error, branches.error, specialities.error, staffingStates.error].filter((error): error is string => Boolean(error));
 
   return (
     <section className="resource-section">
@@ -241,13 +284,40 @@ export function StaffingSection() {
         }} disabled={!companyId || branches.loading} required />
         <SelectField label="Especialidad" value={form.specialityId} options={optionsOf(specialities.items, (item) => `${item.code} · ${item.name}`)} onChange={(event) => updateField('specialityId', event.target.value)} disabled={!branchId || specialities.loading} required />
         <Field label="Capacidad" type="number" min="0" step="any" value={form.capacity} onChange={(event) => updateField('capacity', event.target.value)} required />
-        <Field label="Solicitud" value={form.request} onChange={(event) => updateField('request', event.target.value)} />
-        <Field label="ID de estado de staffing" type="number" min="1" step="1" value={form.staffingStateId} onChange={(event) => updateField('staffingStateId', event.target.value)} required />
+        <Field label="Solicitud" value={form.request} onChange={(event) => updateField('request', event.target.value)} required />
+        <SelectField label="Estado de staffing" value={form.staffingStateId} options={optionsOf(activeStaffingStates, (state) => state.name)} onChange={(event) => updateField('staffingStateId', event.target.value)} disabled={staffingStates.loading} required />
         <Field label="Fecha de registro" type="date" value={form.registeredDate} onChange={(event) => updateField('registeredDate', event.target.value)} required />
         <SubmitButton loading={action.loading} disabled={projects.loading}>Crear staffing</SubmitButton>
         {projects.error && <span className="form-error">No se pudieron cargar los proyectos: {projects.error}</span>}
         {catalogErrors.map((error) => <span className="form-error" key={error}>{error}</span>)}
         {action.error && <span className="form-error">{action.error}</span>}
+      </form>
+
+      <form
+        className="staffing-filter-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setFilters(filterForm);
+        }}
+      >
+        <Field label="ID de proyecto" type="number" min="1" step="1" value={filterForm.projectId} onChange={(event) => setFilterForm((current) => ({ ...current, projectId: event.target.value }))} />
+        <Field label="ID de periodo" type="number" min="1" step="1" value={filterForm.periodId} onChange={(event) => setFilterForm((current) => ({ ...current, periodId: event.target.value }))} />
+        <Field label="ID de subperiodo" type="number" min="1" step="1" value={filterForm.subperiodId} onChange={(event) => setFilterForm((current) => ({ ...current, subperiodId: event.target.value }))} />
+        <Field label="ID de sección" type="number" min="1" step="1" value={filterForm.sectionId} onChange={(event) => setFilterForm((current) => ({ ...current, sectionId: event.target.value }))} />
+        <Field label="ID de fracción" type="number" min="1" step="1" value={filterForm.fractionId} onChange={(event) => setFilterForm((current) => ({ ...current, fractionId: event.target.value }))} />
+        <Field label="ID de especialidad" type="number" min="1" step="1" value={filterForm.specialityId} onChange={(event) => setFilterForm((current) => ({ ...current, specialityId: event.target.value }))} />
+        <SelectField label="Filtrar por estado" value={filterForm.staffingStateId} options={optionsOf(staffingStates.items, (state) => state.name)} onChange={(event) => setFilterForm((current) => ({ ...current, staffingStateId: event.target.value }))} disabled={staffingStates.loading} />
+        <button className="button primary" type="submit">Filtrar</button>
+        <button
+          className="button"
+          type="button"
+          onClick={() => {
+            setFilterForm(emptyStaffingFilters);
+            setFilters(emptyStaffingFilters);
+          }}
+        >
+          Limpiar filtros
+        </button>
       </form>
 
       {staffing.error && <div className="alert error">{staffing.error}</div>}

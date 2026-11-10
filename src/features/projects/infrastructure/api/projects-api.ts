@@ -56,6 +56,9 @@ export interface PlanningPeriod {
   id: number;
   name: string;
   code: string;
+  startDate: string;
+  endDate: string;
+  isAdditional: boolean;
   isActive: boolean;
   subperiods: PlanningSubperiod[];
 }
@@ -64,6 +67,8 @@ export interface PlanningSubperiod {
   id: number;
   name: string;
   code: string;
+  startDate: string;
+  endDate: string;
   isActive: boolean;
   sections: PlanningSection[];
 }
@@ -72,6 +77,8 @@ export interface PlanningSection {
   id: number;
   name: string;
   code: string;
+  startDate: string;
+  endDate: string;
   isActive: boolean;
   fractions: PlanningFraction[];
 }
@@ -80,6 +87,8 @@ export interface PlanningFraction {
   id: number;
   name: string;
   code: string;
+  startDate: string;
+  endDate: string;
   isActive: boolean;
 }
 

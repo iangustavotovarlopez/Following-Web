@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type Dispatch,
@@ -7,7 +8,11 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import type { PageResponse } from '../../../../shared/api';
+import {
+  API_MUTATION_EVENT,
+  type ApiMutationDetail,
+  type PageResponse,
+} from '../../../../shared/api';
 import {
   ActiveBadge,
   ApiSection,
@@ -837,7 +842,18 @@ function TeamMembersSection({ companies, revision, onSaved }: {
   const [branchId, setBranchId] = useState<Id>();
   const [specialityId, setSpecialityId] = useState<Id>();
   const [teamId, setTeamId] = useState<Id>();
+  const [collaboratorRevision, setCollaboratorRevision] = useState(0);
   const [form, setForm] = useState<{ collaboratorId: Id }>({ collaboratorId: undefined });
+  useEffect(() => {
+    function handleMutation(event: Event) {
+      const { path } = (event as CustomEvent<ApiMutationDetail>).detail;
+      if (path === '/collaborators/v0/collaborators' || /^\/collaborators\/v0\/collaborators\/\d+$/.test(path)) {
+        setCollaboratorRevision((current) => current + 1);
+      }
+    }
+    window.addEventListener(API_MUTATION_EVENT, handleMutation);
+    return () => window.removeEventListener(API_MUTATION_EVENT, handleMutation);
+  }, []);
   const branches = useOptions(`member-branches:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
   );
@@ -847,7 +863,7 @@ function TeamMembersSection({ companies, revision, onSaved }: {
   const teams = useOptions(`member-teams:${companyId}:${branchId}:${specialityId}:${revision}`, () =>
     companyId && branchId && specialityId ? companiesApi.listTeams(companyId, branchId, specialityId, pagination) : Promise.resolve(null),
   );
-  const collaborators = useScopedList(`member-collaborators:${companyId}`, () =>
+  const collaborators = useScopedList(`member-collaborators:${companyId}:${collaboratorRevision}`, () =>
     companyId
       ? collaboratorsApi.listCollaborators({ 'company.id': companyId, ...pagination })
       : Promise.resolve(null),

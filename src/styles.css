@@ -82,6 +82,25 @@ button {
   white-space: nowrap;
 }
 
+.app-header-actions,
+.api-response-export {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.api-response-export-floating {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(21, 37, 61, 0.12);
+}
+
 .dashboard {
   display: grid;
   gap: 24px;
@@ -205,6 +224,25 @@ button {
 .inline-form {
   justify-content: flex-end;
   min-width: min(100%, 620px);
+}
+
+.api-section-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e8edf3;
+  background: #f8fafc;
+}
+
+.staffing-filter-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: end;
+  gap: 12px;
+  padding: 18px 24px;
+  border-top: 1px solid #e8edf3;
+  background: #f8fafc;
 }
 
 .form-stack {
@@ -456,6 +494,11 @@ tbody tr:last-child td {
 .badge.inactive {
   color: #7d4d18;
   background: #fff1d8;
+}
+
+.badge.neutral {
+  color: #46576b;
+  background: #edf2f7;
 }
 
 .empty-state {

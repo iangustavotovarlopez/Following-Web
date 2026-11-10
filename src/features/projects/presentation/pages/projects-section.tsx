@@ -6,7 +6,7 @@ import {
   type Project,
   type ProjectState,
 } from '../../infrastructure/api';
-import { ActiveBadge, ApiSection, type TableColumn } from '../../../../shared/components/api-section';
+import { ApiSection, StateBadge, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
@@ -46,7 +46,7 @@ export function ProjectsSection() {
       label: 'Estado',
       render: (item) => {
         const state = states.find((candidate) => candidate.id === item.state.id);
-        return state ? <ActiveBadge active={state.isActive} /> : '—';
+        return state ? <StateBadge name={state.name} /> : '—';
       },
     },
     {
@@ -55,7 +55,7 @@ export function ProjectsSection() {
       render: (item) => (
         <a
           className="button primary details-link"
-          href={`/?projectId=${item.id}&projectCode=${encodeURIComponent(item.code)}&projectName=${encodeURIComponent(item.name)}&companyId=${item.company.id}`}
+          href={`/?projectId=${item.id}&projectCode=${encodeURIComponent(item.code)}&projectName=${encodeURIComponent(item.name)}`}
           target="_blank"
           rel="noreferrer"
         >

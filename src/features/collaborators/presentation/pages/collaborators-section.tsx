@@ -5,7 +5,7 @@ import {
   type CollaboratorState,
   type CreateCollaboratorRequest,
 } from '../../infrastructure/api';
-import { ApiSection, ActiveBadge, type TableColumn } from '../../../../shared/components/api-section';
+import { ApiSection, StateBadge, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
@@ -30,7 +30,7 @@ const columns: TableColumn<Collaborator>[] = [
         .join(' '),
   },
   { key: 'company', label: 'Compañía', render: (item) => item.company.name },
-  { key: 'state', label: 'Estado', render: (item) => <ActiveBadge active={item.state.isActive} /> },
+  { key: 'state', label: 'Estado', render: (item) => <StateBadge name={item.state.name} /> },
   { key: 'hireDate', label: 'Contratación', render: (item) => item.hireDate },
   {
     key: 'actions',
@@ -62,9 +62,15 @@ const initialForm: CreateCollaboratorRequest = {
 };
 
 export function CollaboratorsSection() {
+  const [companyFilterId, setCompanyFilterId] = useState('');
+  const companyFilter = companyFilterId ? Number(companyFilterId) : undefined;
   const load = useCallback(
-    () => collaboratorsApi.listCollaborators({ page: 1, pageSize: 20 }),
-    [],
+    () => collaboratorsApi.listCollaborators({
+      page: 1,
+      pageSize: 20,
+      ...(companyFilter ? { 'company.id': companyFilter } : {}),
+    }),
+    [companyFilter],
   );
   const { data, loading, error, refresh } = useApiList(load);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -149,6 +155,14 @@ export function CollaboratorsSection() {
       loading={loading}
       error={error}
       form={formView}
+      filters={
+        <SelectField
+          label="Filtrar por compañía"
+          value={companyFilterId}
+          options={companies.map((item) => ({ value: item.id, label: item.name }))}
+          onChange={(event) => setCompanyFilterId(event.target.value)}
+        />
+      }
     />
   );
 }

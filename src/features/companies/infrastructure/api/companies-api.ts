@@ -515,11 +515,11 @@ export class CompaniesApi {
   deleteDeliverable(
     companyId: number,
     branchId: number,
-    specialityId: number,
+    technologyId: number,
     id: number,
   ) {
     return this.client.delete(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/deliverables/${id}`,
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/deliverables/${id}`,
     );
   }
 }

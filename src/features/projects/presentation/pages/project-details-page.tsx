@@ -1,29 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ActiveBadge } from '../../../../shared/components/api-section';
-import { companiesApi, type Fraction, type Period, type Section, type Subperiod } from '../../../companies/infrastructure/api';
-import { projectsApi, type Planning, type PlanningFraction, type PlanningPeriod, type PlanningSection, type PlanningSubperiod } from '../../infrastructure/api';
-import type { PageResponse, PaginationQuery } from '../../../../shared/api';
+import { projectsApi, type Planning, type PlanningPeriod } from '../../infrastructure/api';
 
 type DateRange = { startDate?: string; endDate?: string };
-type DetailedFraction = PlanningFraction & DateRange;
-type DetailedSection = PlanningSection & DateRange & { fractions: DetailedFraction[] };
-type DetailedSubperiod = PlanningSubperiod & DateRange & { sections: DetailedSection[] };
-type DetailedPeriod = PlanningPeriod & DateRange & { subperiods: DetailedSubperiod[] };
-type DetailedPlanning = Omit<Planning, 'periods'> & { periods: DetailedPeriod[] };
-
-async function loadAllPages<T>(request: (query: PaginationQuery) => Promise<PageResponse<T> | null>) {
-  const firstPage = await request({ page: 1, pageSize: 100 });
-  if (!firstPage) return [];
-
-  const remainingPages = await Promise.all(
-    Array.from({ length: Math.max(0, firstPage.pagination.totalPages - 1) }, (_, index) =>
-      request({ page: index + 2, pageSize: 100 }),
-    ),
-  );
-  return [...firstPage.content, ...remainingPages.flatMap((response) => response?.content ?? [])];
-}
-
-const idKey = (...ids: number[]) => ids.join(':');
 const dateFormatter = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 
 function formatDate(value: string) {
@@ -50,7 +29,7 @@ function dateIsWithinRange(range: DateRange, date: Date) {
   return start !== null && end !== null && date.getTime() >= start && date.getTime() <= end;
 }
 
-function timelineFor(periods: DetailedPeriod[], today: Date) {
+function timelineFor(periods: PlanningPeriod[], today: Date) {
   const ranges = periods.flatMap((period) => {
     const start = dateTimestamp(period.startDate);
     const end = dateTimestamp(period.endDate);
@@ -68,7 +47,7 @@ function timelineFor(periods: DetailedPeriod[], today: Date) {
   };
 }
 
-function currentStage(periods: DetailedPeriod[], today: Date) {
+function currentStage(periods: PlanningPeriod[], today: Date) {
   for (const period of periods) {
     if (!period.isActive || !dateIsWithinRange(period, today)) continue;
     const subperiod = period.subperiods.find((item) => item.isActive && dateIsWithinRange(item, today));
@@ -79,126 +58,26 @@ function currentStage(periods: DetailedPeriod[], today: Date) {
   return null;
 }
 
-async function loadPlanningDates(companyId: number, plannings: Planning[]): Promise<DetailedPlanning[]> {
-  const periods = await loadAllPages((query) => companiesApi.listPeriods(companyId, query));
-  const periodById = new Map<number, Period>(periods.map((period) => [period.id, period]));
-  const periodIds = [...new Set(plannings.flatMap((planning) => planning.periods.map((period) => period.id)))];
-  const subperiodByKey = new Map<string, Subperiod>();
-
-  await Promise.all(periodIds.map(async (periodId) => {
-    const subperiods = await loadAllPages((query) => companiesApi.listSubperiods(companyId, periodId, query));
-    subperiods.forEach((subperiod) => subperiodByKey.set(idKey(periodId, subperiod.id), subperiod));
-  }));
-
-  const subperiodRefs = [...new Map(plannings.flatMap((planning) => planning.periods.flatMap((period) =>
-    period.subperiods.map((subperiod) => [idKey(period.id, subperiod.id), { periodId: period.id, subperiodId: subperiod.id }] as const),
-  ))).values()];
-  const sectionByKey = new Map<string, Section>();
-
-  await Promise.all(subperiodRefs.map(async ({ periodId, subperiodId }) => {
-    const sections = await loadAllPages((query) => companiesApi.listSections(companyId, periodId, subperiodId, query));
-    sections.forEach((section) => sectionByKey.set(idKey(periodId, subperiodId, section.id), section));
-  }));
-
-  const sectionRefs = [...new Map(plannings.flatMap((planning) => planning.periods.flatMap((period) =>
-    period.subperiods.flatMap((subperiod) => subperiod.sections.map((section) => [
-      idKey(period.id, subperiod.id, section.id),
-      { periodId: period.id, subperiodId: subperiod.id, sectionId: section.id },
-    ] as const)),
-  ))).values()];
-  const fractionByKey = new Map<string, Fraction>();
-
-  await Promise.all(sectionRefs.map(async ({ periodId, subperiodId, sectionId }) => {
-    const fractions = await loadAllPages((query) => companiesApi.listFractions(companyId, periodId, subperiodId, sectionId, query));
-    fractions.forEach((fraction) => fractionByKey.set(idKey(periodId, subperiodId, sectionId, fraction.id), fraction));
-  }));
-
-  return plannings.map((planning) => ({
-    ...planning,
-    periods: planning.periods.map((period) => {
-      const periodDetails = periodById.get(period.id);
-      return {
-        ...period,
-        startDate: periodDetails?.startDate,
-        endDate: periodDetails?.endDate,
-        subperiods: period.subperiods.map((subperiod) => {
-          const subperiodDetails = subperiodByKey.get(idKey(period.id, subperiod.id));
-          return {
-            ...subperiod,
-            startDate: subperiodDetails?.startDate,
-            endDate: subperiodDetails?.endDate,
-            sections: subperiod.sections.map((section) => {
-              const sectionDetails = sectionByKey.get(idKey(period.id, subperiod.id, section.id));
-              return {
-                ...section,
-                startDate: sectionDetails?.startDate,
-                endDate: sectionDetails?.endDate,
-                fractions: section.fractions.map((fraction) => {
-                  const fractionDetails = fractionByKey.get(idKey(period.id, subperiod.id, section.id, fraction.id));
-                  return {
-                    ...fraction,
-                    startDate: fractionDetails?.startDate,
-                    endDate: fractionDetails?.endDate,
-                  };
-                }),
-              };
-            }),
-          };
-        }),
-      };
-    }),
-  }));
-}
-
 interface ProjectDetailsPageProps {
   projectId: number;
   projectCode: string;
   projectName?: string;
-  companyId?: number;
 }
 
-export function ProjectDetailsPage({ projectId, projectCode, projectName, companyId: projectCompanyId }: ProjectDetailsPageProps) {
-  const [plannings, setPlannings] = useState<DetailedPlanning[]>([]);
+export function ProjectDetailsPage({ projectId, projectCode, projectName }: ProjectDetailsPageProps) {
+  const [plannings, setPlannings] = useState<Planning[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateError, setDateError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
-    setDateError(null);
 
     projectsApi
       .listPlanning(projectId)
-      .then(async (planningResponse) => {
-        let detailedPlannings: DetailedPlanning[] = (planningResponse ?? []).map((planning) => ({
-          ...planning,
-          periods: (planning.periods ?? []).map((period) => ({
-            ...period,
-            subperiods: (period.subperiods ?? []).map((subperiod) => ({
-              ...subperiod,
-              sections: (subperiod.sections ?? []).map((section) => ({
-                ...section,
-                fractions: section.fractions ?? [],
-              })),
-            })),
-          })),
-        }));
-
-        if (projectCompanyId && detailedPlannings.length) {
-          try {
-            detailedPlannings = await loadPlanningDates(projectCompanyId, detailedPlannings);
-          } catch {
-            if (active) setDateError('No se pudieron cargar las fechas de los periodos y sus elementos.');
-          }
-        } else if (detailedPlannings.length) {
-          setDateError('No se pudieron cargar las fechas de los periodos y sus elementos.');
-        }
-
-        if (active) {
-          setPlannings(detailedPlannings);
-        }
+      .then((response) => {
+        if (active) setPlannings(response ?? []);
       })
       .catch((cause) => {
         if (active) {
@@ -212,7 +91,7 @@ export function ProjectDetailsPage({ projectId, projectCode, projectName, compan
     return () => {
       active = false;
     };
-  }, [projectCompanyId, projectId]);
+  }, [projectId]);
 
   const title = projectName || `Proyecto ${projectCode || projectId}`;
   const today = new Date();
@@ -244,7 +123,6 @@ export function ProjectDetailsPage({ projectId, projectCode, projectName, compan
           </div>
 
           {error && <div className="alert error">{error}</div>}
-          {dateError && <div className="alert warning">{dateError}</div>}
           {loading ? (
             <div className="empty-state">Consultando planeaciones...</div>
           ) : error ? null : plannings.length === 0 ? (
