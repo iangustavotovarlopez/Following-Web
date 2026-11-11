@@ -13,7 +13,7 @@ import {
   type TechnologyCreateRequest,
   type TechnologyPatchRequest,
 } from '../../infrastructure/api';
-import { ActiveBadge, StateBadge, type TableColumn } from '../../../../shared/components/api-section';
+import { ActiveBadge, StateBadge, formatStateName, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
@@ -246,7 +246,7 @@ function CompaniesTab() {
         <SelectField
           label="Estado"
           value={filterDraft.stateId}
-          options={states.map((state) => ({ value: state.id, label: state.name }))}
+          options={states.map((state) => ({ value: state.id, label: formatStateName(state.name) }))}
           onChange={(event) => setFilterDraft({ ...filterDraft, stateId: event.target.value })}
         />
         <div className="management-filter-actions">
@@ -275,11 +275,11 @@ function CompaniesTab() {
             <SelectField
               label="Estado"
               value={editingStateId}
-              options={states.map((state) => ({ value: state.id, label: state.name }))}
+              options={states.map((state) => ({ value: state.id, label: formatStateName(state.name) }))}
               onChange={(event) => {
                 const state = states.find((item) => item.id === Number(event.target.value));
                 setEditingStateId(event.target.value);
-                setEditingState(state ? { name: state.name, isActive: state.isActive } : {});
+                setEditingState(state ? { name: formatStateName(state.name), isActive: state.isActive } : {});
               }}
             />
             <Field label="Nombre" value={editingState.name ?? ''} onChange={(event) => setEditingState({ ...editingState, name: event.target.value })} />
@@ -307,7 +307,7 @@ function CompaniesTab() {
           <SelectField
             label="Estado"
             value={companyDraft.stateId || ''}
-            options={states.map((state) => ({ value: state.id, label: state.name }))}
+            options={states.map((state) => ({ value: state.id, label: formatStateName(state.name) }))}
             onChange={(event) => setCompanyDraft({ ...companyDraft, stateId: Number(event.target.value) })}
             disabled={statesLoading || states.length === 0}
             required

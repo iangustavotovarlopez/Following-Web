@@ -23,6 +23,11 @@ export interface CollaboratorRolePatchRequest {
 
 export interface CollaboratorState extends CollaboratorCatalogItem {}
 
+export interface CollaboratorStatePatchRequest {
+  name?: string;
+  isActive?: boolean;
+}
+
 export interface CollaboratorRoleRelation {
   id: number;
   role: { id: number };
@@ -163,6 +168,10 @@ export class CollaboratorsApi {
       '/collaborators/v0/states',
       query,
     );
+  }
+
+  patchState(id: number, body: CollaboratorStatePatchRequest) {
+    return this.client.patch<CollaboratorState>(`/collaborators/v0/states/${id}`, body);
   }
 
   createState(body: { name: string }) {

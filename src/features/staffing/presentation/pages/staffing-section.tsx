@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { PageResponse } from '../../../../shared/api';
-import { ActiveBadge } from '../../../../shared/components/api-section';
+import { ActiveBadge, formatStateName } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
@@ -268,7 +268,7 @@ export function StaffingSection() {
     { key: 'speciality', label: 'Especialidad', render: (item: Staffing) => `#${item.speciality.id}` },
     { key: 'capacity', label: 'Capacidad', render: (item: Staffing) => item.capacity },
     { key: 'request', label: 'Solicitud', render: (item: Staffing) => item.request || '—' },
-    { key: 'state', label: 'Estado', render: (item: Staffing) => item.staffingState.name },
+    { key: 'state', label: 'Estado', render: (item: Staffing) => formatStateName(item.staffingState.name) },
     { key: 'registeredDate', label: 'Fecha', render: (item: Staffing) => item.registeredDate },
     { key: 'active', label: 'Estado', render: (item: Staffing) => <ActiveBadge active={item.isActive} /> },
   ];
@@ -304,7 +304,7 @@ export function StaffingSection() {
         <SelectField label="Especialidad" value={form.specialityId} options={optionsOf(specialities.items, (item) => `${item.code} · ${item.name}`)} onChange={(event) => updateField('specialityId', event.target.value)} disabled={!branchId || specialities.loading} required />
         <Field label="Capacidad" type="number" min="0" step="any" value={form.capacity} onChange={(event) => updateField('capacity', event.target.value)} required />
         <Field label="Solicitud" value={form.request} onChange={(event) => updateField('request', event.target.value)} required />
-        <SelectField label="Estado de staffing" value={form.staffingStateId} options={optionsOf(activeStaffingStates, (state) => state.name)} onChange={(event) => updateField('staffingStateId', event.target.value)} disabled={staffingStates.loading} required />
+        <SelectField label="Estado de staffing" value={form.staffingStateId} options={optionsOf(activeStaffingStates, (state) => formatStateName(state.name))} onChange={(event) => updateField('staffingStateId', event.target.value)} disabled={staffingStates.loading} required />
         <Field label="Fecha de registro" type="date" value={form.registeredDate} onChange={(event) => updateField('registeredDate', event.target.value)} required />
         <SubmitButton loading={action.loading} disabled={projects.loading}>Crear staffing</SubmitButton>
         {projects.error && <span className="form-error">No se pudieron cargar los proyectos: {projects.error}</span>}
@@ -325,7 +325,7 @@ export function StaffingSection() {
         <Field label="ID de sección" type="number" min="1" step="1" value={filterForm.sectionId} onChange={(event) => setFilterForm((current) => ({ ...current, sectionId: event.target.value }))} />
         <Field label="ID de fracción" type="number" min="1" step="1" value={filterForm.fractionId} onChange={(event) => setFilterForm((current) => ({ ...current, fractionId: event.target.value }))} />
         <Field label="ID de especialidad" type="number" min="1" step="1" value={filterForm.specialityId} onChange={(event) => setFilterForm((current) => ({ ...current, specialityId: event.target.value }))} />
-        <SelectField label="Filtrar por estado" value={filterForm.staffingStateId} options={optionsOf(staffingStates.items, (state) => state.name)} onChange={(event) => setFilterForm((current) => ({ ...current, staffingStateId: event.target.value }))} disabled={staffingStates.loading} />
+        <SelectField label="Filtrar por estado" value={filterForm.staffingStateId} options={optionsOf(staffingStates.items, (state) => formatStateName(state.name))} onChange={(event) => setFilterForm((current) => ({ ...current, staffingStateId: event.target.value }))} disabled={staffingStates.loading} />
         <button className="button primary" type="submit">Filtrar</button>
         <button
           className="button"

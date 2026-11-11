@@ -1,5 +1,4 @@
 import { ApiError, ProblemDetail } from './api-error';
-import { recordApiResponse } from './api-response-log';
 
 export interface HttpClientOptions {
   baseUrl?: string;
@@ -112,26 +111,11 @@ export class HttpClient {
       throw new ApiError(response.status, problem);
     }
     if (response.status === 204) {
-      recordApiResponse({
-        capturedAt: new Date().toISOString(),
-        method: options.method,
-        path: `${url.pathname}${url.search}`,
-        status: response.status,
-        response: null,
-      });
       return null;
     }
 
     const text = await response.text();
-    const data = text ? (JSON.parse(text) as T) : null;
-    recordApiResponse({
-      capturedAt: new Date().toISOString(),
-      method: options.method,
-      path: `${url.pathname}${url.search}`,
-      status: response.status,
-      response: data,
-    });
-    return data;
+    return text ? (JSON.parse(text) as T) : null;
   }
 }
 

@@ -78,6 +78,12 @@ export function ActiveBadge({ active }: { active: boolean }) {
   );
 }
 
+export function formatStateName(name: string) {
+  return name.trim().toLocaleLowerCase('es').split(/\s+/)
+    .map((word) => word.charAt(0).toLocaleUpperCase('es') + word.slice(1))
+    .join(' ');
+}
+
 export function StateBadge({ name }: { name: string }) {
   const normalizedName = name.trim().toUpperCase();
   const className = normalizedName === 'ACTIVO'
@@ -86,5 +92,5 @@ export function StateBadge({ name }: { name: string }) {
       ? 'badge inactive'
       : 'badge neutral';
 
-  return <span className={className}>{name}</span>;
+  return <span className={className}>{formatStateName(name)}</span>;
 }

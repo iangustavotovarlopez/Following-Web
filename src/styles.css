@@ -82,8 +82,7 @@ button {
   white-space: nowrap;
 }
 
-.app-header-actions,
-.api-response-export {
+.app-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -134,18 +133,6 @@ button {
   color: #526673;
   background: #f0f8f7;
   font-size: 0.82rem;
-}
-
-.api-response-export-floating {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 20;
-  border: 1px solid #e1e6ee;
-  border-radius: 8px;
-  padding: 8px;
-  background: #ffffff;
-  box-shadow: 0 4px 16px rgba(21, 37, 61, 0.12);
 }
 
 .dashboard {

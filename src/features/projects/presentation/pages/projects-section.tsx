@@ -6,7 +6,7 @@ import {
   type Project,
   type ProjectState,
 } from '../../infrastructure/api';
-import { ApiSection, StateBadge, type TableColumn } from '../../../../shared/components/api-section';
+import { ApiSection, StateBadge, formatStateName, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
@@ -145,7 +145,7 @@ export function ProjectsSection() {
         <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
         <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         <SelectField label="Compañía" value={form.company.id || ''} options={companies.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, company: { id: Number(e.target.value) } })} required />
-        <SelectField label="Estado" value={form.state.id} options={states.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, state: { id: Number(e.target.value) } })} required />
+        <SelectField label="Estado" value={form.state.id} options={states.map((item) => ({ value: item.id, label: formatStateName(item.name) }))} onChange={(e) => setForm({ ...form, state: { id: Number(e.target.value) } })} required />
         <SubmitButton loading={saving}>Crear proyecto</SubmitButton>
       </form>
       <form className="inline-form" onSubmit={submitStateCreate}>
@@ -153,11 +153,11 @@ export function ProjectsSection() {
         <SubmitButton>Crear estado</SubmitButton>
       </form>
       <form className="inline-form" onSubmit={submitStatePatch}>
-        <SelectField label="Editar estado" value={editingStateId || ''} options={states.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
+        <SelectField label="Editar estado" value={editingStateId || ''} options={states.map((item) => ({ value: item.id, label: formatStateName(item.name) }))} onChange={(e) => {
           const id = Number(e.target.value);
           const state = states.find((item) => item.id === id);
           setEditingStateId(id);
-          setEditingState(state ? { name: state.name, isActive: state.isActive } : {});
+          setEditingState(state ? { name: formatStateName(state.name), isActive: state.isActive } : {});
         }} required />
         <Field label="Nombre" value={editingState.name ?? ''} onChange={(e) => setEditingState({ ...editingState, name: e.target.value })} />
         <SelectField label="Activo" value={editingState.isActive === undefined ? '' : String(editingState.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setEditingState({ ...editingState, isActive: e.target.value === 'true' })} />
@@ -173,7 +173,7 @@ export function ProjectsSection() {
         <Field label="Código" value={editingProject.code ?? ''} onChange={(e) => setEditingProject({ ...editingProject, code: e.target.value })} />
         <Field label="Nombre" value={editingProject.name ?? ''} onChange={(e) => setEditingProject({ ...editingProject, name: e.target.value })} />
         <SelectField label="Compañía" value={editingProject.company?.id ?? ''} options={companies.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setEditingProject({ ...editingProject, company: { id: Number(e.target.value) } })} />
-        <SelectField label="Estado" value={editingProject.state?.id ?? ''} options={states.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setEditingProject({ ...editingProject, state: { id: Number(e.target.value) } })} />
+        <SelectField label="Estado" value={editingProject.state?.id ?? ''} options={states.map((item) => ({ value: item.id, label: formatStateName(item.name) }))} onChange={(e) => setEditingProject({ ...editingProject, state: { id: Number(e.target.value) } })} />
         <SubmitButton>Actualizar proyecto</SubmitButton>
       </form>
       {formError && <span className="form-error">{formError}</span>}

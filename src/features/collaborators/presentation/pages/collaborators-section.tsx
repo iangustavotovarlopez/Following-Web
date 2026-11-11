@@ -3,9 +3,10 @@ import {
   collaboratorsApi,
   type Collaborator,
   type CollaboratorState,
+  type CollaboratorStatePatchRequest,
   type CreateCollaboratorRequest,
 } from '../../infrastructure/api';
-import { StateBadge, type TableColumn } from '../../../../shared/components/api-section';
+import { StateBadge, formatStateName, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { ManagementTable } from '../../../../shared/components/management-table';
 import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
@@ -71,6 +72,10 @@ export function CollaboratorsSection() {
   const [stateName, setStateName] = useState('');
   const [stateSaving, setStateSaving] = useState(false);
   const [stateError, setStateError] = useState<string | null>(null);
+  const [editingStateId, setEditingStateId] = useState('');
+  const [editingState, setEditingState] = useState<CollaboratorStatePatchRequest>({});
+  const protectedState = states.find((state) => state.id === Number(editingStateId))
+    ?.name.trim().toUpperCase() === 'INACTIVO';
   const [expandedCollaborators, setExpandedCollaborators] = useState<Set<number>>(() => new Set());
 
   useEffect(() => {
@@ -209,14 +214,49 @@ export function CollaboratorsSection() {
 
   async function submitState(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (stateSaving) return;
+    if (!stateName.trim()) {
+      setStateError('El nombre del estado es obligatorio.');
+      return;
+    }
     setStateSaving(true);
     setStateError(null);
     try {
       const state = await collaboratorsApi.createState({ name: stateName.trim() });
-      if (state) setStates((current) => [...current, state]);
+      if (!state) throw new Error('La API no devolvió el estado creado.');
+      setStates((current) => [...current, state]);
       setStateName('');
     } catch (cause) {
       setStateError(cause instanceof Error ? cause.message : 'No se pudo crear el estado.');
+    } finally {
+      setStateSaving(false);
+    }
+  }
+
+  async function patchState(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (stateSaving) return;
+    if (!editingStateId || !editingState.name?.trim() || editingState.isActive === undefined) {
+      setStateError('Selecciona un estado e informa su nombre y si está activo.');
+      return;
+    }
+    if (protectedState) {
+      setStateError('Inactivo está protegido porque se utiliza para dar de baja colaboradores.');
+      return;
+    }
+    setStateSaving(true);
+    setStateError(null);
+    try {
+      const state = await collaboratorsApi.patchState(Number(editingStateId), {
+        name: editingState.name.trim(),
+        isActive: editingState.isActive,
+      });
+      if (!state) throw new Error('La API no devolvió el estado actualizado.');
+      setStates((current) => current.map((item) => item.id === state.id ? state : item));
+      setEditingState({ name: formatStateName(state.name), isActive: state.isActive });
+      refresh();
+    } catch (cause) {
+      setStateError(cause instanceof Error ? cause.message : 'No se pudo actualizar el estado.');
     } finally {
       setStateSaving(false);
     }
@@ -256,7 +296,7 @@ export function CollaboratorsSection() {
         <SelectField
           label="Estado"
           value={filterDraft.stateId}
-          options={states.map((item) => ({ value: item.id, label: item.name }))}
+          options={states.map((item) => ({ value: item.id, label: formatStateName(item.name) }))}
           onChange={(event) => setFilterDraft({ ...filterDraft, stateId: event.target.value })}
         />
         <div className="management-filter-actions">
@@ -287,11 +327,41 @@ export function CollaboratorsSection() {
 
       <details className="state-catalog-tools">
         <summary>Administrar estados de colaboradores</summary>
-        <form className="management-form" onSubmit={(event) => void submitState(event)}>
-          <Field label="Nuevo estado" value={stateName} onChange={(event) => setStateName(event.target.value)} required />
-          <SubmitButton loading={stateSaving}>Crear estado</SubmitButton>
-          {stateError && <div className="alert error">{stateError}</div>}
-        </form>
+        <div className="state-catalog-grid">
+          <form className="management-form" onSubmit={(event) => void submitState(event)}>
+            <Field label="Nuevo estado" value={stateName} maxLength={100}
+              onChange={(event) => setStateName(event.target.value)} disabled={stateSaving} required />
+            <SubmitButton loading={stateSaving} disabled={referencesLoading}>Crear estado</SubmitButton>
+          </form>
+          <form className="management-form" onSubmit={(event) => void patchState(event)}>
+            <SelectField label="Estado" value={editingStateId}
+              options={states.map((state) => ({ value: state.id, label: formatStateName(state.name) }))}
+              onChange={(event) => {
+                const state = states.find((item) => item.id === Number(event.target.value));
+                setEditingStateId(event.target.value);
+                setEditingState(state ? { name: formatStateName(state.name), isActive: state.isActive } : {});
+                setStateError(null);
+              }}
+              disabled={referencesLoading || stateSaving} required />
+            <Field label="Nombre" value={editingState.name ?? ''} maxLength={100} required
+              disabled={!editingStateId || protectedState || stateSaving}
+              onChange={(event) => setEditingState({ ...editingState, name: event.target.value })} />
+            <SelectField label="Activo"
+              value={editingState.isActive === undefined ? '' : String(editingState.isActive)}
+              options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]}
+              disabled={!editingStateId || protectedState || stateSaving} required
+              onChange={(event) => setEditingState({
+                ...editingState,
+                isActive: event.target.value === '' ? undefined : event.target.value === 'true',
+              })} />
+            <SubmitButton loading={stateSaving}
+              disabled={!editingStateId || referencesLoading || protectedState}>Actualizar estado</SubmitButton>
+          </form>
+        </div>
+        {protectedState && <div className="alert warning">
+          Inactivo está protegido: su nombre y estado activo son necesarios para dar de baja colaboradores.
+        </div>}
+        {stateError && <div className="alert error">{stateError}</div>}
       </details>
 
       <ResourceModal
@@ -318,7 +388,7 @@ export function CollaboratorsSection() {
           <SelectField
             label="Estado"
             value={form.state.id || ''}
-            options={states.map((item) => ({ value: item.id, label: item.name }))}
+            options={states.map((item) => ({ value: item.id, label: formatStateName(item.name) }))}
             onChange={(event) => setForm({ ...form, state: { id: Number(event.target.value) } })}
             disabled={referencesLoading || states.length === 0}
             required

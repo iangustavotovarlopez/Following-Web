@@ -9,7 +9,6 @@ import {
 } from '../features/companies/presentation/pages/nested-resource-management';
 import { AdvancedRelationshipsManagement } from '../features/relations/presentation/pages/advanced-relationships-management';
 import { StaffingSection } from '../features/staffing/presentation/pages/staffing-section';
-import { ApiResponseExport } from '../shared/components/api-response-export';
 import { PeopleSection } from './people-section';
 import { CompanyProvider, GlobalCompanySelector } from './providers/company-context';
 
@@ -18,26 +17,20 @@ export function App() {
   const collaboratorId = Number(searchParams.get('collaboratorId'));
   if (Number.isInteger(collaboratorId) && collaboratorId > 0) {
     return (
-      <>
-        <ApiResponseExport floating />
-        <CollaboratorDetailsPage
-          collaboratorId={collaboratorId}
-          collaboratorCode={searchParams.get('collaboratorCode') ?? ''}
-        />
-      </>
+      <CollaboratorDetailsPage
+        collaboratorId={collaboratorId}
+        collaboratorCode={searchParams.get('collaboratorCode') ?? ''}
+      />
     );
   }
   const projectId = Number(searchParams.get('projectId'));
   if (Number.isInteger(projectId) && projectId > 0) {
     return (
-      <>
-        <ApiResponseExport floating />
-        <ProjectDetailsPage
-          projectId={projectId}
-          projectCode={searchParams.get('projectCode') ?? ''}
-          projectName={searchParams.get('projectName') ?? undefined}
-        />
-      </>
+      <ProjectDetailsPage
+        projectId={projectId}
+        projectCode={searchParams.get('projectCode') ?? ''}
+        projectName={searchParams.get('projectName') ?? undefined}
+      />
     );
   }
 
@@ -53,7 +46,6 @@ export function App() {
             </p>
           </div>
           <div className="app-header-actions">
-            <ApiResponseExport />
             <span className="connection-status">API local</span>
           </div>
         </header>

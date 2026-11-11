@@ -85,6 +85,18 @@ backend y las rutinas V1. Este aviso no bloquea las asignaciones.
 
 ## Estándar de catálogos
 
+Administrar estados de colaboradores permite crear estados y actualizar su
+nombre y campo Activo, igual que la administración de estados de compañías.
+Las actualizaciones refrescan el catálogo y el listado de colaboradores.
+Inactivo está protegido frente a cambios de nombre y desactivación, tanto en
+la interfaz como en la base de datos, porque se utiliza para dar de baja colaboradores.
+
+Las etiquetas de estados se muestran con la inicial de cada palabra en
+mayúscula y espacios (`Activo`, `Inactivo`, `Por Iniciar`, `En Progreso`), en
+tablas, filtros, selectores y editores. También se formatean las respuestas de
+APIs que todavía envían nombres en mayúsculas, sin cambiar los IDs ni las
+comparaciones de actividad.
+
 Companies incluye las pestañas Companies, Branches, Technologies y
 Especialidades. Especialidades se administra aquí, no en Additional catalogs:
 usa la compañía global y una branch, filtros por código y nombre (mínimo tres
