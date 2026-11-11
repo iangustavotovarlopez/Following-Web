@@ -353,6 +353,16 @@ button {
   list-style: none;
 }
 
+.team-member-search-results {
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  border: 1px solid #d5dce7;
+  border-radius: 6px;
+  padding: 4px;
+  list-style: none;
+}
+
 .role-search-option {
   display: grid;
   gap: 3px;

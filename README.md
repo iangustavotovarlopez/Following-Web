@@ -103,6 +103,15 @@ La aplicación concatena `name`, `secondName`, `thirdName`, `lastname`,
 el modal de edición y la confirmación de baja. Omite partes nulas o vacías y
 espacios sobrantes en sus extremos. El API conserva cada campo por separado;
 no devuelve un nombre concatenado.
+El botón **Añadir +** está disponible también cuando el equipo no tiene
+integrantes y abre un modal de asignación. La búsqueda en la aplicación acepta
+código, nombres o apellidos a partir de tres caracteres, sobre todas las
+páginas de colaboradores de la compañía del equipo. Excluye colaboradores
+inactivos y relaciones ya activas; una relación inactiva puede reactivarse,
+sin duplicar registros. La fecha de ingreso inicia con el día actual y puede
+cambiarse antes de guardar. La asignación utiliza el POST de miembros existente
+y actualiza la tabla sin cerrar el detalle. Los equipos inactivos no permiten
+añadir integrantes.
 Cambiar compañía, branch, especialidad o filtros cierra los detalles desplegados.
 
 El lápiz abre un modal que permite editar únicamente la fecha de ingreso
