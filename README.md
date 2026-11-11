@@ -94,6 +94,31 @@ catálogo vacío, no como un error. La tabla de tecnologías usa el código y no
 incluidos en la respuesta de relaciones del colaborador, sin consultar los
 catálogos de todas las branches. Los errores reales de la API siguen mostrándose.
 
+En People → Teams, el icono de tabla de cada equipo carga sus miembros debajo
+de la fila, sin abrir otra página. La tabla anidada muestra código, colaborador,
+fecha de ingreso y estado, incluyendo integrantes inactivos mediante
+`includeInactive=true`. Consulta todas las páginas y permite reintentar errores.
+La aplicación concatena `name`, `secondName`, `thirdName`, `lastname`,
+`secondLastname` y `thirdLastname` para mostrar el nombre completo en la tabla,
+el modal de edición y la confirmación de baja. Omite partes nulas o vacías y
+espacios sobrantes en sus extremos. El API conserva cada campo por separado;
+no devuelve un nombre concatenado.
+Cambiar compañía, branch, especialidad o filtros cierra los detalles desplegados.
+
+El lápiz abre un modal que permite editar únicamente la fecha de ingreso
+(`joinDate`) y Activo/Inactivo. El bote rojo confirma la baja lógica de la
+relación; no borra al colaborador ni su fecha, y los integrantes inactivos
+siguen visibles para poder reactivarlos. Las operaciones recargan los miembros
+sin cerrar el detalle del equipo, también cuando se asignan desde Additional
+catalogs. Las reactivaciones respetan las validaciones de equipo y colaborador
+del backend.
+
+El formulario existente de asignación de miembros admite una fecha opcional:
+para relaciones nuevas se utiliza hoy si se omite; al reactivar se conserva la
+fecha existente cuando no se indica otra. Se requiere el backend y los V1
+actualizados de MySQL/PostgreSQL. Con una respuesta antigua sin `joinDate`, la
+tabla muestra `No informado` y un aviso, sin inventar una fecha de ingreso.
+
 Las tablas anidadas de especialidades y tecnologías muestran **Branch** como
 primera columna. El nombre proviene de `speciality.branch` o `technology.branch`
 en la respuesta de la API, sin consultas adicionales de catálogos.

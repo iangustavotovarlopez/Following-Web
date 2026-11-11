@@ -623,13 +623,15 @@ button {
   gap: 16px;
 }
 
-.collaborator-inline-details .resource-section {
+.collaborator-inline-details .resource-section,
+.team-inline-details .resource-section {
   min-width: 0;
   border-radius: 10px;
   box-shadow: none;
 }
 
-.collaborator-inline-details .section-heading {
+.collaborator-inline-details .section-heading,
+.team-inline-details .section-heading {
   padding: 16px;
   flex-direction: row;
 }
@@ -640,21 +642,31 @@ button {
   font-size: 0.8rem;
 }
 
-.collaborator-inline-details h2 {
+.collaborator-inline-details h2,
+.team-inline-details h2 {
   font-size: 1rem;
 }
 
-.collaborator-inline-details .section-heading .muted {
+.collaborator-inline-details .section-heading .muted,
+.team-inline-details .section-heading .muted {
   font-size: 0.8rem;
 }
 
 .collaborator-inline-details th,
-.collaborator-inline-details td {
+.collaborator-inline-details td,
+.team-inline-details th,
+.team-inline-details td {
   padding: 10px 16px;
 }
 
-.collaborator-inline-details .empty-state {
+.collaborator-inline-details .empty-state,
+.team-inline-details .empty-state {
   padding: 20px 16px;
+}
+
+.row-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .row-action-button.edit:hover {

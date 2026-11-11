@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 
-export function RowActions({ onEdit, onDelete, children, className }: {
+export function RowActions({ onEdit, onDelete, children, className, deleteDisabled = false }: {
   onEdit: () => void;
   onDelete: () => void;
   children?: ReactNode;
   className?: string;
+  deleteDisabled?: boolean;
 }) {
   return (
     <div className={`row-actions${className ? ` ${className}` : ''}`}>
@@ -23,6 +24,7 @@ export function RowActions({ onEdit, onDelete, children, className }: {
       <button
         aria-label="Eliminar"
         className="row-action-button delete"
+        disabled={deleteDisabled}
         onClick={onDelete}
         title="Eliminar"
         type="button"

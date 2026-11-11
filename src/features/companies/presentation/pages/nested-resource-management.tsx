@@ -44,6 +44,8 @@ import {
   type TeamMember,
 } from '../../infrastructure/api';
 import { collaboratorsApi, type Collaborator } from '../../../collaborators/infrastructure/api';
+import { TeamMembersTable } from './team-members-table';
+import { collaboratorFullName } from '../../../collaborators/presentation/collaborator-name';
 
 type Id = number | undefined;
 type FormSetter<T> = Dispatch<SetStateAction<T>>;
@@ -52,14 +54,6 @@ const pagination = { page: 1, pageSize: 100 };
 const idOf = (value: string): Id => value ? Number(value) : undefined;
 const optionsOf = <T extends { id: number }>(items: T[], label: (item: T) => string) =>
   items.map((item) => ({ value: item.id, label: label(item) }));
-const collaboratorFullName = (item: Collaborator) => [
-  item.name,
-  item.secondName,
-  item.thirdName,
-  item.lastname,
-  item.secondLastname,
-  item.thirdLastname,
-].filter(Boolean).join(' ');
 const collaboratorLabel = (item: Collaborator) => `${item.code} · ${collaboratorFullName(item)}`;
 
 function useScopedList<T>(
@@ -598,6 +592,20 @@ export function TeamsSection({ revision, onSaved }: {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [expandedTeams, setExpandedTeams] = useState<Set<number>>(() => new Set());
+
+  useEffect(() => {
+    setExpandedTeams(new Set());
+  }, [companyId, branchId, specialityId, filters]);
+
+  function toggleMembers(teamId: number) {
+    setExpandedTeams((current) => {
+      const next = new Set(current);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
+  }
 
   function openModal(team?: Team) {
     setEditingTeam(team ?? null);
@@ -650,7 +658,23 @@ export function TeamsSection({ revision, onSaved }: {
         <RowActions
           onEdit={() => openModal(item)}
           onDelete={() => void deleteTeam(item)}
-        />
+        >
+          <button
+            aria-label={`${expandedTeams.has(item.id) ? 'Ocultar' : 'Mostrar'} miembros de ${item.name}`}
+            aria-expanded={expandedTeams.has(item.id)}
+            aria-controls={expandedTeams.has(item.id) ? `team-members-${item.id}` : undefined}
+            className="row-action-button details"
+            title={expandedTeams.has(item.id) ? 'Ocultar miembros' : 'Mostrar miembros del equipo'}
+            onClick={() => toggleMembers(item.id)}
+            type="button"
+          >
+            <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 9v12" />
+              <path d={expandedTeams.has(item.id) ? 'm12 16 3-3 3 3' : 'm12 14 3 3 3-3'} />
+            </svg>
+          </button>
+        </RowActions>
       ),
     },
   ];
@@ -685,6 +709,10 @@ export function TeamsSection({ revision, onSaved }: {
         error={load.error}
         rows={load.data}
         rowKey={(item) => item.id}
+        renderExpandedRow={(item) => expandedTeams.has(item.id) && companyId && branchId && specialityId
+          ? <TeamMembersTable key={`${companyId}:${branchId}:${specialityId}:${item.id}`}
+              companyId={companyId} branchId={branchId} specialityId={specialityId} team={item} />
+          : null}
       />
       <ResourceModal
         open={modalOpen}
@@ -804,7 +832,7 @@ function TeamMembersSection({ revision, onSaved }: {
   const [specialityId, setSpecialityId] = useState<Id>();
   const [teamId, setTeamId] = useState<Id>();
   const [collaboratorRevision, setCollaboratorRevision] = useState(0);
-  const [form, setForm] = useState<{ collaboratorId: Id }>({ collaboratorId: undefined });
+  const [form, setForm] = useState<{ collaboratorId: Id; joinDate: string }>({ collaboratorId: undefined, joinDate: '' });
   useEffect(() => {
     function handleMutation(event: Event) {
       const { path } = (event as CustomEvent<ApiMutationDetail>).detail;
@@ -839,18 +867,23 @@ function TeamMembersSection({ revision, onSaved }: {
     { key: 'code', label: 'Código', render: (item) => item.collaborator.code },
     { key: 'name', label: 'Colaborador', render: (item) => {
       const collaborator = collaboratorsById.get(item.collaborator.id);
-      return collaborator ? collaboratorFullName(collaborator) : item.collaborator.name;
+      return collaboratorFullName(collaborator ?? item.collaborator);
     } },
+    { key: 'joinDate', label: 'Fecha de ingreso', render: (item) => item.joinDate ?? 'No informado' },
     { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
   ];
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!companyId || !branchId || !specialityId || !teamId || !form.collaboratorId) return;
-    void action.execute(() => companiesApi.createTeamMember(companyId, branchId, specialityId, teamId, {
-      collaborator: { id: form.collaboratorId! },
-    })).then((member) => {
-      if (!member) return;
-      setForm({ collaboratorId: undefined });
+    void action.execute(async () => {
+      const member = await companiesApi.createTeamMember(companyId, branchId, specialityId, teamId, {
+        collaborator: { id: form.collaboratorId! },
+        joinDate: form.joinDate || undefined,
+      });
+      if (!member) throw new Error('La API no devolvió el integrante asignado.');
+      return member;
+    }).then(() => {
+      setForm({ collaboratorId: undefined, joinDate: '' });
       onSaved();
     }).catch(() => undefined);
   }
@@ -864,7 +897,10 @@ function TeamMembersSection({ revision, onSaved }: {
         <SelectField label="Equipo" value={teamId ?? ''} options={optionsOf(teams, (item) => item.name)} onChange={(event) => setTeamId(idOf(event.target.value))} disabled={!specialityId} required />
       </div>
       <div className="inline-form">
-        <SelectField label="Colaborador" value={form.collaboratorId ?? ''} options={optionsOf(activeCollaborators, collaboratorLabel)} onChange={(event) => setForm({ collaboratorId: idOf(event.target.value) })} disabled={!companyId || collaborators.loading} required />
+        <SelectField label="Colaborador" value={form.collaboratorId ?? ''} options={optionsOf(activeCollaborators, collaboratorLabel)} onChange={(event) => setForm({ ...form, collaboratorId: idOf(event.target.value) })} disabled={!companyId || collaborators.loading} required />
+        <Field label="Fecha de ingreso (opcional)" type="date" value={form.joinDate}
+          onChange={(event) => setForm({ ...form, joinDate: event.target.value })} disabled={action.loading} />
+        <span className="muted">Nueva relación: hoy por defecto. Al reactivar, se conserva la fecha si no indicas otra.</span>
         <SubmitButton loading={action.loading} disabled={!companyId || !branchId || !specialityId || !teamId || !selectedTeam?.isActive || !form.collaboratorId}>Asignar</SubmitButton>
         {selectedTeam && !selectedTeam.isActive && <span className="muted">No se pueden asignar miembros a un equipo inactivo.</span>}
         {collaborators.loading && <span className="muted">Cargando colaboradores...</span>}

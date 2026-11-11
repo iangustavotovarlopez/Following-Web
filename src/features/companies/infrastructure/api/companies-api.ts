@@ -223,12 +223,28 @@ export interface TeamMember {
     id: number;
     code: string;
     name: string;
+    secondName?: string | null;
+    thirdName?: string | null;
+    lastname?: string | null;
+    secondLastname?: string | null;
+    thirdLastname?: string | null;
   };
   isActive: boolean;
+  joinDate?: string | null;
 }
 
 export interface TeamMemberCreateRequest {
   collaborator: { id: number };
+  joinDate?: string;
+}
+
+export interface TeamMemberPatchRequest {
+  joinDate?: string;
+  isActive?: boolean;
+}
+
+export interface TeamMemberQuery extends PaginationQuery {
+  includeInactive?: boolean;
 }
 
 export interface Deliverable {
@@ -555,7 +571,7 @@ export class CompaniesApi {
     branchId: number,
     specialityId: number,
     teamId: number,
-    query: PaginationQuery = {},
+    query: TeamMemberQuery = {},
   ) {
     return this.client.get<PageResponse<TeamMember>>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams/${teamId}/members`,
@@ -572,6 +588,20 @@ export class CompaniesApi {
   ) {
     return this.client.post<TeamMember>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams/${teamId}/members`,
+      body,
+    );
+  }
+
+  patchTeamMember(
+    companyId: number,
+    branchId: number,
+    specialityId: number,
+    teamId: number,
+    memberId: number,
+    body: TeamMemberPatchRequest,
+  ) {
+    return this.client.patch<TeamMember>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams/${teamId}/members/${memberId}`,
       body,
     );
   }
