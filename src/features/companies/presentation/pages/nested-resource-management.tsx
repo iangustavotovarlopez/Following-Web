@@ -206,7 +206,7 @@ export function PlanningSection() {
 }
 
 export function AdditionalCatalogsSection() {
-  const { selectedCompanyId } = useGlobalCompany();
+  const { selectedCompanyId, selectedBranchId } = useGlobalCompany();
   const [catalogRevision, setCatalogRevision] = useState(0);
   const refreshCatalogs = () => setCatalogRevision((revision) => revision + 1);
 
@@ -219,17 +219,17 @@ export function AdditionalCatalogsSection() {
           <p className="muted">Administra skills, entregables y miembros de equipos.</p>
         </div>
       </div>
-      {!selectedCompanyId && (
+      {(!selectedCompanyId || !selectedBranchId) && (
         <div className="company-scope-hint">
-          Selecciona una compañía en el selector global para consultar sus catálogos asociados.
+          Selecciona compañía y branch en los selectores globales para consultar sus catálogos asociados.
         </div>
       )}
       <div className="resource-grid additional-catalog-grid">
-        <SkillsSection key={`skills:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
-        <SkillLevelsSection key={`levels:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
-        <DeliverablesSection key={`deliverables:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <SkillsSection key={`skills:${selectedCompanyId}:${selectedBranchId}`} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <SkillLevelsSection key={`levels:${selectedCompanyId}:${selectedBranchId}`} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <DeliverablesSection key={`deliverables:${selectedCompanyId}:${selectedBranchId}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <TeamMembersSection
-          key={`members:${selectedCompanyId ?? 'all'}`}
+          key={`members:${selectedCompanyId}:${selectedBranchId}`}
           revision={catalogRevision}
           onSaved={refreshCatalogs}
         />
@@ -495,12 +495,8 @@ function SkillsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const { selectedCompanyId: companyId } = useGlobalCompany();
-  const [branchId, setBranchId] = useState<Id>();
+  const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
   const [technologyId, setTechnologyId] = useState<Id>();
-  const branches = useOptions(`skill-branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
   const technologies = useOptions(`skill-technologies:${companyId}:${branchId}:${revision}`, () =>
     companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
   );
@@ -522,10 +518,6 @@ function SkillsSection({ revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && branchId && technologyId)}
       filterFields={<>
-        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
-          setBranchId(idOf(event.target.value));
-          setTechnologyId(undefined);
-        }} disabled={!companyId} required />
         <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => setTechnologyId(idOf(event.target.value))} disabled={!branchId} required />
       </>}
       initialForm={{ name: '', description: '' }}
@@ -543,13 +535,9 @@ function SkillLevelsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const { selectedCompanyId: companyId } = useGlobalCompany();
-  const [branchId, setBranchId] = useState<Id>();
+  const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
   const [technologyId, setTechnologyId] = useState<Id>();
   const [skillId, setSkillId] = useState<Id>();
-  const branches = useOptions(`level-branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
   const technologies = useOptions(`level-technologies:${companyId}:${branchId}:${revision}`, () =>
     companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
   );
@@ -574,11 +562,6 @@ function SkillLevelsSection({ revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && branchId && technologyId && skillId)}
       filterFields={<>
-        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
-          setBranchId(idOf(event.target.value));
-          setTechnologyId(undefined);
-          setSkillId(undefined);
-        }} disabled={!companyId} required />
         <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => {
           setTechnologyId(idOf(event.target.value));
           setSkillId(undefined);
@@ -600,13 +583,9 @@ export function TeamsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const { selectedCompanyId: companyId } = useGlobalCompany();
-  const [branchId, setBranchId] = useState<Id>();
+  const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
   const [specialityId, setSpecialityId] = useState<Id>();
   const [filters, setFilters] = useState<CatalogFilterValues>({});
-  const branches = useOptions(`team-branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
   const specialities = useOptions(`team-specialities:${companyId}:${branchId}:${revision}`, () =>
     companyId && branchId ? companiesApi.listSpecialities(companyId, branchId, pagination) : Promise.resolve(null),
   );
@@ -693,10 +672,6 @@ export function TeamsSection({ revision, onSaved }: {
         </button>
       </div>
       <div className="management-filters">
-        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
-          setBranchId(idOf(event.target.value));
-          setSpecialityId(undefined);
-        }} disabled={!companyId} required />
         <SelectField label="Especialidad" value={specialityId ?? ''} options={optionsOf(specialities, (item) => item.name)} onChange={(event) => setSpecialityId(idOf(event.target.value))} disabled={!branchId} required />
         <CatalogFilters showCode={false} onApply={setFilters} />
       </div>
@@ -705,7 +680,7 @@ export function TeamsSection({ revision, onSaved }: {
         columns={columns}
         emptyMessage={companyId && branchId && specialityId
           ? 'No hay equipos para mostrar.'
-          : 'Selecciona una compañía en el selector global, una branch y una especialidad para consultar los equipos.'}
+          : 'Selecciona compañía y branch en los selectores globales, y una especialidad para consultar los equipos.'}
         loading={load.loading}
         error={load.error}
         rows={load.data}
@@ -742,12 +717,8 @@ function DeliverablesSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const { selectedCompanyId: companyId } = useGlobalCompany();
-  const [branchId, setBranchId] = useState<Id>();
+  const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
   const [technologyId, setTechnologyId] = useState<Id>();
-  const branches = useOptions(`deliverable-branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
   const technologies = useOptions(`deliverable-technologies:${companyId}:${branchId}:${revision}`, () =>
     companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
   );
@@ -770,10 +741,6 @@ function DeliverablesSection({ revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && branchId && technologyId)}
       filterFields={<>
-        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
-          setBranchId(idOf(event.target.value));
-          setTechnologyId(undefined);
-        }} disabled={!companyId} required />
         <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => setTechnologyId(idOf(event.target.value))} disabled={!branchId} required />
       </>}
       initialForm={{ name: '', description: '', sequence: 1 }}
@@ -833,8 +800,7 @@ function TeamMembersSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const { selectedCompanyId: companyId } = useGlobalCompany();
-  const [branchId, setBranchId] = useState<Id>();
+  const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
   const [specialityId, setSpecialityId] = useState<Id>();
   const [teamId, setTeamId] = useState<Id>();
   const [collaboratorRevision, setCollaboratorRevision] = useState(0);
@@ -849,9 +815,6 @@ function TeamMembersSection({ revision, onSaved }: {
     window.addEventListener(API_MUTATION_EVENT, handleMutation);
     return () => window.removeEventListener(API_MUTATION_EVENT, handleMutation);
   }, []);
-  const branches = useOptions(`member-branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
   const specialities = useOptions(`member-specialities:${companyId}:${branchId}:${revision}`, () =>
     companyId && branchId ? companiesApi.listSpecialities(companyId, branchId, pagination) : Promise.resolve(null),
   );
@@ -894,11 +857,6 @@ function TeamMembersSection({ revision, onSaved }: {
   const formView = (
     <form className="form-stack" onSubmit={submit}>
       <div className="inline-form">
-        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
-          setBranchId(idOf(event.target.value));
-          setSpecialityId(undefined);
-          setTeamId(undefined);
-        }} disabled={!companyId} required />
         <SelectField label="Especialidad" value={specialityId ?? ''} options={optionsOf(specialities, (item) => item.name)} onChange={(event) => {
           setSpecialityId(idOf(event.target.value));
           setTeamId(undefined);

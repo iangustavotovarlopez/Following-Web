@@ -9,7 +9,6 @@ import { useApiAction } from '../../../../shared/hooks/use-api-action';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
 import {
   companiesApi,
-  type Branch,
   type Fraction,
   type Period,
   type Section,
@@ -40,7 +39,6 @@ interface StaffingFormState {
   subperiodId: string;
   sectionId: string;
   fractionId: string;
-  branchId: string;
   specialityId: string;
   capacity: string;
   request: string;
@@ -78,7 +76,6 @@ function newStaffingForm(): StaffingFormState {
     subperiodId: '',
     sectionId: '',
     fractionId: '',
-    branchId: '',
     specialityId: '',
     capacity: '',
     request: '',
@@ -133,7 +130,7 @@ function referenceId(value: string) {
 }
 
 export function StaffingSection() {
-  const { selectedCompanyId } = useGlobalCompany();
+  const { selectedCompanyId, selectedBranchId } = useGlobalCompany();
   const [filterForm, setFilterForm] = useState<StaffingFilterForm>(emptyStaffingFilters);
   const [filters, setFilters] = useState<StaffingFilterForm>(emptyStaffingFilters);
   const loadStaffing = useCallback(() => {
@@ -177,13 +174,19 @@ export function StaffingSection() {
   const periodId = referenceId(form.periodId);
   const subperiodId = referenceId(form.subperiodId);
   const sectionId = referenceId(form.sectionId);
-  const branchId = referenceId(form.branchId);
+  const branchId = companyId === selectedCompanyId ? selectedBranchId : undefined;
 
   useEffect(() => {
     setForm(newStaffingForm());
     setFilterForm(emptyStaffingFilters);
     setFilters(emptyStaffingFilters);
   }, [selectedCompanyId]);
+
+  useEffect(() => {
+    setForm((current) => ({ ...current, specialityId: '' }));
+    setFilterForm((current) => ({ ...current, specialityId: '' }));
+    setFilters((current) => ({ ...current, specialityId: '' }));
+  }, [selectedBranchId]);
 
   const periods = useCatalog<Period>(
     `staffing-periods:${companyId}`,
@@ -209,11 +212,6 @@ export function StaffingSection() {
       ? companiesApi.listFractions(companyId, periodId, subperiodId, sectionId, pagination)
       : Promise.resolve(null),
   );
-  const branches = useCatalog<Branch>(
-    `staffing-branches:${companyId}`,
-    Boolean(companyId),
-    () => companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
   const specialities = useCatalog<Speciality>(
     `staffing-specialities:${companyId}:${branchId}`,
     Boolean(companyId && branchId),
@@ -221,6 +219,8 @@ export function StaffingSection() {
       ? companiesApi.listSpecialities(companyId, branchId, pagination)
       : Promise.resolve(null),
   );
+  const [formError, setFormError] = useState<string | null>(null);
+  useEffect(() => { setFormError(null); }, [selectedCompanyId, selectedBranchId, form.projectId]);
 
   function updateField(key: keyof StaffingFormState, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -236,7 +236,13 @@ export function StaffingSection() {
     const selectedFractionId = referenceId(form.fractionId);
     const specialityId = referenceId(form.specialityId);
     const staffingStateId = referenceId(form.staffingStateId);
-    if (!project || !companyId || !projectId || !selectedPeriodId || !selectedSubperiodId || !selectedSectionId || !selectedFractionId || !specialityId || !staffingStateId) return;
+    if (!project || !companyId || !projectId || !selectedPeriodId || !selectedSubperiodId || !selectedSectionId || !selectedFractionId || !specialityId || !staffingStateId
+      || !branchId || specialities.loading || specialities.error
+      || !specialities.items.some((item) => item.id === specialityId)) {
+      setFormError('Selecciona compañía y branch globales, un proyecto de esa compañía y los campos requeridos.');
+      return;
+    }
+    setFormError(null);
 
     const body: CreateStaffingRequest = {
       project: { id: projectId },
@@ -272,7 +278,7 @@ export function StaffingSection() {
     { key: 'registeredDate', label: 'Fecha', render: (item: Staffing) => item.registeredDate },
     { key: 'active', label: 'Estado', render: (item: Staffing) => <ActiveBadge active={item.isActive} /> },
   ];
-  const catalogErrors = [periods.error, subperiods.error, sections.error, fractions.error, branches.error, specialities.error, staffingStates.error].filter((error): error is string => Boolean(error));
+  const catalogErrors = [periods.error, subperiods.error, sections.error, fractions.error, specialities.error, staffingStates.error].filter((error): error is string => Boolean(error));
 
   return (
     <section className="resource-section">
@@ -286,7 +292,7 @@ export function StaffingSection() {
 
       <form className="staffing-form" onSubmit={submit}>
         <SelectField label="Proyecto" value={form.projectId} options={optionsOf(projects.data, (project) => `${project.code} · ${project.name}`)} onChange={(event) => {
-          setForm((current) => ({ ...current, projectId: event.target.value, periodId: '', subperiodId: '', sectionId: '', fractionId: '', branchId: '', specialityId: '' }));
+          setForm((current) => ({ ...current, projectId: event.target.value, periodId: '', subperiodId: '', sectionId: '', fractionId: '', specialityId: '' }));
         }} disabled={projects.loading} required />
         <SelectField label="Periodo" value={form.periodId} options={optionsOf(periods.items, (item) => `${item.name} · ${item.code}`)} onChange={(event) => {
           setForm((current) => ({ ...current, periodId: event.target.value, subperiodId: '', sectionId: '', fractionId: '' }));
@@ -298,15 +304,15 @@ export function StaffingSection() {
           setForm((current) => ({ ...current, sectionId: event.target.value, fractionId: '' }));
         }} disabled={!subperiodId || sections.loading} required />
         <SelectField label="Fracción" value={form.fractionId} options={optionsOf(fractions.items, (item) => `${item.name} · ${item.code}`)} onChange={(event) => updateField('fractionId', event.target.value)} disabled={!sectionId || fractions.loading} required />
-        <SelectField label="Branch" value={form.branchId} options={optionsOf(branches.items, (item) => item.name)} onChange={(event) => {
-          setForm((current) => ({ ...current, branchId: event.target.value, specialityId: '' }));
-        }} disabled={!companyId || branches.loading} required />
         <SelectField label="Especialidad" value={form.specialityId} options={optionsOf(specialities.items, (item) => `${item.code} · ${item.name}`)} onChange={(event) => updateField('specialityId', event.target.value)} disabled={!branchId || specialities.loading} required />
         <Field label="Capacidad" type="number" min="0" step="any" value={form.capacity} onChange={(event) => updateField('capacity', event.target.value)} required />
         <Field label="Solicitud" value={form.request} onChange={(event) => updateField('request', event.target.value)} required />
         <SelectField label="Estado de staffing" value={form.staffingStateId} options={optionsOf(activeStaffingStates, (state) => formatStateName(state.name))} onChange={(event) => updateField('staffingStateId', event.target.value)} disabled={staffingStates.loading} required />
         <Field label="Fecha de registro" type="date" value={form.registeredDate} onChange={(event) => updateField('registeredDate', event.target.value)} required />
-        <SubmitButton loading={action.loading} disabled={projects.loading}>Crear staffing</SubmitButton>
+        <SubmitButton loading={action.loading} disabled={projects.loading || !branchId || specialities.loading || Boolean(specialities.error)}>Crear staffing</SubmitButton>
+        {!selectedBranchId && <span className="muted">Selecciona una branch en la barra superior para crear staffing.</span>}
+        {companyId && companyId !== selectedCompanyId && <span className="form-error">El proyecto debe pertenecer a la compañía global seleccionada.</span>}
+        {formError && <span className="form-error">{formError}</span>}
         {projects.error && <span className="form-error">No se pudieron cargar los proyectos: {projects.error}</span>}
         {catalogErrors.map((error) => <span className="form-error" key={error}>{error}</span>)}
         {action.error && <span className="form-error">{action.error}</span>}

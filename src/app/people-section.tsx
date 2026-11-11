@@ -6,7 +6,7 @@ import { CollaboratorsSection } from '../features/collaborators/presentation/pag
 import { useGlobalCompany } from './providers/company-context';
 
 export function PeopleSection() {
-  const { selectedCompanyId } = useGlobalCompany();
+  const { selectedCompanyId, selectedBranchId } = useGlobalCompany();
   const [activeTab, setActiveTab] = useState('collaborators');
   const [teamRevision, setTeamRevision] = useState(0);
   const tabs = [
@@ -48,7 +48,7 @@ export function PeopleSection() {
         )}
         {activeTab === 'teams' && (
           <TeamsSection
-            key={selectedCompanyId ?? 'all'}
+            key={`${selectedCompanyId}:${selectedBranchId}`}
             revision={teamRevision}
             onSaved={() => setTeamRevision((revision) => revision + 1)}
           />

@@ -6,16 +6,18 @@ export function ResourceModal({
   title,
   onClose,
   children,
+  dismissible = true,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
+  dismissible?: boolean;
 }) {
   if (!open) return null;
   const titleId = `modal-${title.toLowerCase().replaceAll(' ', '-')}`;
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={dismissible ? onClose : undefined}>
       <div
         aria-labelledby={titleId}
         aria-modal="true"
@@ -25,7 +27,7 @@ export function ResourceModal({
       >
         <div className="management-modal-heading">
           <h3 id={titleId}>{title}</h3>
-          <button aria-label="Cerrar" className="modal-close" onClick={onClose} type="button">×</button>
+          {dismissible && <button aria-label="Cerrar" className="modal-close" onClick={onClose} type="button">×</button>}
         </div>
         {children}
       </div>

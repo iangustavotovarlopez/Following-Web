@@ -93,10 +93,17 @@ button {
   top: 0;
   z-index: 30;
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: flex-end;
   padding: 12px clamp(20px, 5vw, 80px);
   background: #284567;
   box-shadow: 0 4px 12px rgba(15, 25, 40, 0.16);
+}
+
+.scope-modal-selector {
+  display: grid;
+  gap: 6px;
 }
 
 .global-company-selector {

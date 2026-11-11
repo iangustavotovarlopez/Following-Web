@@ -41,7 +41,7 @@ const fullName = (item: Collaborator) => [
 ].filter(Boolean).join(' ');
 
 export function CollaboratorsSection() {
-  const { companies, selectedCompanyId, loading: companiesLoading } = useGlobalCompany();
+  const { companies, selectedCompanyId, selectedBranchId, branches, loading: companiesLoading } = useGlobalCompany();
   const [filterDraft, setFilterDraft] = useState({ code: '', name: '', stateId: '' });
   const [filters, setFilters] = useState(filterDraft);
   const [filterError, setFilterError] = useState<string | null>(null);
@@ -320,6 +320,10 @@ export function CollaboratorsSection() {
               collaboratorId={item.id}
               collaboratorCode={item.code}
               inlineCollaborator={item}
+              branchScope={selectedCompanyId ? {
+                companyId: selectedCompanyId,
+                branch: branches.find((branch) => branch.id === selectedBranchId),
+              } : undefined}
             />
           </div>
         ) : null}

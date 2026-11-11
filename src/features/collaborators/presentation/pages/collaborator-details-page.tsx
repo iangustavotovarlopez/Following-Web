@@ -10,7 +10,7 @@ import {
 } from '../../infrastructure/api';
 import { companiesApi, type Branch } from '../../../companies/infrastructure/api';
 import { ActiveBadge } from '../../../../shared/components/api-section';
-import type { PageResponse } from '../../../../shared/api';
+import { loadCatalogPages } from '../../../../shared/api';
 import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
 import { SelectField, type SelectOption } from '../../../../shared/components/select-field';
 
@@ -21,19 +21,6 @@ const assignmentLabels: Record<AssignmentKind, string> = {
   speciality: 'especialidad',
   technology: 'tecnología',
 };
-
-async function loadCatalogPages<T>(request: (page: number) => Promise<PageResponse<T> | null>) {
-  const items: T[] = [];
-  let totalPages = 1;
-  for (let page = 1; page <= totalPages; page += 1) {
-    const response = await request(page);
-    // List endpoints return 204 when there are no records.
-    if (response === null) break;
-    items.push(...response.content);
-    totalPages = response.pagination.totalPages;
-  }
-  return items;
-}
 
 function collaboratorName(collaborator: Collaborator) {
   return [
@@ -92,16 +79,23 @@ async function loadAllTechnologies(collaboratorId: number) {
   return loadCatalogPages((page) => collaboratorsApi.listTechnologies(collaboratorId, { page, pageSize: 100 }));
 }
 
+interface CollaboratorBranchScope {
+  companyId: number;
+  branch?: Branch;
+}
+
 interface CollaboratorDetailsPageProps {
   collaboratorId: number;
   collaboratorCode: string;
   inlineCollaborator?: Collaborator;
+  branchScope?: CollaboratorBranchScope;
 }
 
 export function CollaboratorDetailsPage({
   collaboratorId,
   collaboratorCode,
   inlineCollaborator,
+  branchScope,
 }: CollaboratorDetailsPageProps) {
   const [collaborator, setCollaborator] = useState<Collaborator | null>(null);
   const [roles, setRoles] = useState<CollaboratorRole[]>([]);
@@ -343,10 +337,11 @@ export function CollaboratorDetailsPage({
       </div>
       {assignmentKind && selectedCollaborator && (
         <CollaboratorAssignmentModal
-          key={`${collaboratorId}:${assignmentKind}`}
+          key={`${collaboratorId}:${assignmentKind}:${assignmentKind === 'role' ? '' : branchScope?.branch?.id}`}
           kind={assignmentKind}
           collaborator={selectedCollaborator}
           assignedIds={assignedIds}
+          branchScope={branchScope}
           onClose={() => setAssignmentKind(null)}
           onAssigned={() => {
             setAssignmentKind(null);
@@ -358,15 +353,16 @@ export function CollaboratorDetailsPage({
   );
 }
 
-function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose, onAssigned }: {
+function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, branchScope, onClose, onAssigned }: {
   kind: AssignmentKind;
   collaborator: Collaborator;
   assignedIds: number[];
+  branchScope?: CollaboratorBranchScope;
   onClose: () => void;
   onAssigned: () => void;
 }) {
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [branchId, setBranchId] = useState('');
+  const [localBranchId, setBranchId] = useState('');
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -374,9 +370,14 @@ function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose,
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const companyId = collaborator.company.id;
+  const usesGlobalBranch = branchScope?.companyId === companyId;
+  const branchId = usesGlobalBranch
+    ? (branchScope?.branch?.isActive ? String(branchScope.branch.id) : '')
+    : localBranchId;
   const label = assignmentLabels[kind];
 
   useEffect(() => {
+    if (kind !== 'role' && usesGlobalBranch) return;
     let active = true;
     setLoading(true);
     setCatalogError(null);
@@ -395,10 +396,16 @@ function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose,
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [kind, companyId]);
+  }, [kind, companyId, usesGlobalBranch]);
 
   useEffect(() => {
-    if (kind === 'role' || !branchId) return;
+    if (kind === 'role') return;
+    setOptions([]);
+    setSelectedId('');
+    if (!branchId) {
+      if (usesGlobalBranch) setLoading(false);
+      return;
+    }
     let active = true;
     setLoading(true);
     setCatalogError(null);
@@ -414,7 +421,7 @@ function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose,
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [kind, companyId, branchId]);
+  }, [kind, companyId, branchId, usesGlobalBranch]);
 
   const availableOptions = options.filter((option) => !assignedIds.includes(Number(option.value)));
 
@@ -425,7 +432,8 @@ function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose,
       setFormError('No se pueden añadir asignaciones a un colaborador inactivo.');
       return;
     }
-    if (loading || catalogError || !availableOptions.some((option) => String(option.value) === selectedId)) {
+    if (loading || catalogError || (kind !== 'role' && !branchId)
+      || !availableOptions.some((option) => String(option.value) === selectedId)) {
       setFormError('Selecciona una opción disponible para asignar.');
       return;
     }
@@ -452,7 +460,13 @@ function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose,
     <ResourceModal open title={`Añadir ${label}`} onClose={close}>
       <form className="modal-form" onSubmit={(event) => void submit(event)}>
         <p className="muted">Colaborador: {collaborator.code} · {collaboratorName(collaborator)}</p>
-        {kind !== 'role' && (
+        {kind !== 'role' && usesGlobalBranch && (
+          <p className="muted">Branch global: {branchScope?.branch?.name ?? 'Sin seleccionar'}</p>
+        )}
+        {kind !== 'role' && usesGlobalBranch && !branchId && (
+          <span className="muted">Selecciona una branch activa en la barra superior para añadir asignaciones.</span>
+        )}
+        {kind !== 'role' && !usesGlobalBranch && (
           <SelectField label="Branch" value={branchId}
             options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
             onChange={(event) => {
@@ -473,13 +487,13 @@ function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose,
         {!loading && !catalogError && (kind === 'role' || branchId) && availableOptions.length === 0 && (
           <span className="muted">No hay opciones activas pendientes de asignar.</span>
         )}
-        {!loading && !catalogError && kind !== 'role' && branches.length === 0 && (
+        {!loading && !catalogError && kind !== 'role' && !usesGlobalBranch && branches.length === 0 && (
           <span className="muted">No hay branches activas para la compañía del colaborador.</span>
         )}
         {catalogError && <div className="alert error">{catalogError}</div>}
         {formError && <div className="alert error">{formError}</div>}
         <ModalActions onCancel={close} saving={saving} submitLabel="Asignar"
-          submitDisabled={loading || Boolean(catalogError) || !selectedId || availableOptions.length === 0} />
+          submitDisabled={loading || Boolean(catalogError) || (kind !== 'role' && !branchId) || !selectedId || availableOptions.length === 0} />
       </form>
     </ResourceModal>,
     document.body,

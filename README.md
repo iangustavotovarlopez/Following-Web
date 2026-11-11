@@ -49,14 +49,30 @@ periodo, subperiodo, sección, fracción, especialidad y estado. La vista de
 detalle de proyecto consume las fechas que devuelve la API dentro de la
 planeación, sin volver a consultar cada catálogo de periodos y secciones.
 
-El panel incluye un selector global de compañía en una barra superior que
-permanece visible al hacer scroll, también en pantallas pequeñas. Al elegir
-una compañía, las consultas de colaboradores, proyectos, staffing, branches,
-technologies, planeación, especialidades, skills, equipos y relaciones usan esa
-compañía. Si no se selecciona una, los listados que admiten consulta global
-muestran todas; los catálogos anidados esperan una compañía. Los campos de
-compañía en formularios de alta/edición siguen permitiendo asignar o cambiar la
-relación del registro.
+Al entrar al panel aparece un modal para seleccionar **compañía y branch**.
+Si la compañía tiene branches, debe elegirse una para continuar; si no tiene,
+se permite continuar y crearla desde Companies → Branches. Si la base está
+vacía, se permite entrar para crear la primera compañía. Un error de carga no
+se interpreta como un catálogo vacío y ofrece reintentar.
+
+Ambos selectores globales permanecen visibles en la barra superior al hacer
+scroll, también en pantallas pequeñas. Cambiar la compañía limpia la branch
+anterior y carga únicamente sus branches. Los selectores consultan todas las
+páginas y se actualizan tras crear, editar o eliminar compañías y branches.
+La selección no se guarda entre recargas del panel.
+
+Las consultas de colaboradores, proyectos, staffing, branches y planeación
+usan la compañía global. Technologies, especialidades, skills, niveles,
+equipos, entregables y sus relaciones usan también la branch global, sin
+selectores locales duplicados. Cambiar ese contexto reinicia los filtros,
+formularios y selecciones dependientes para evitar mezclar registros.
+El alta de staffing consulta las especialidades de la branch global únicamente
+cuando el proyecto pertenece a la compañía seleccionada; su listado conserva
+los filtros propios de solicitudes y el ámbito de compañía.
+Los catálogos independientes de branch conservan su ámbito original y los
+campos de compañía en formularios de alta/edición siguen permitiendo asignar o
+cambiar la relación del registro. Después de la selección inicial, limpiar la
+compañía permite los listados globales que ya admitían esa consulta.
 
 En Collaborators, el icono de tabla en la columna de acciones permite desplegar
 y contraer los roles, especialidades y tecnologías debajo de la misma fila.
@@ -67,7 +83,9 @@ aplicar filtros cierra los detalles desplegados.
 Cada tabla de detalle incluye **Añadir**, que abre un modal para asignar un rol,
 una especialidad o una tecnología al colaborador de esa fila. El modal muestra
 opciones activas no asignadas; especialidades y tecnologías se consultan por
-branch dentro de la compañía del colaborador. Al guardar se actualizan las
+la branch global dentro de la compañía del colaborador. La página independiente
+de detalle conserva su selector de branch de esa compañía, sin depender del
+contexto del panel. Al guardar se actualizan las
 tablas sin cerrar la fila. Los colaboradores inactivos no permiten nuevas
 asignaciones desde este flujo.
 

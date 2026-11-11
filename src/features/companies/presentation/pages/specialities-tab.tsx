@@ -13,14 +13,8 @@ import { companiesApi, type Speciality } from '../../infrastructure/api';
 const pagination = { page: 1, pageSize: 100 };
 
 export function SpecialitiesTab() {
-  const { selectedCompanyId: companyId } = useGlobalCompany();
-  const [branchId, setBranchId] = useState<number>();
+  const { selectedCompanyId: companyId, selectedBranchId: branchId, branches } = useGlobalCompany();
   const [filters, setFilters] = useState<CatalogFilterValues>({});
-  const loadBranches = useCallback(
-    () => companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-    [companyId],
-  );
-  const branches = useApiList(loadBranches);
   const load = useCallback(
     () => companyId && branchId
       ? companiesApi.listSpecialities(companyId, branchId, { ...pagination, ...filters })
@@ -34,7 +28,7 @@ export function SpecialitiesTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const branch = branches.data.find((item) => item.id === branchId);
+  const branch = branches.find((item) => item.id === branchId);
 
   function openModal(item?: Speciality) {
     setEditing(item ?? null);
@@ -111,22 +105,13 @@ export function SpecialitiesTab() {
         <button className="button primary" type="button" disabled={!companyId || !branchId}
           onClick={() => openModal()}>Nuevo +</button>
       </div>
-      <CatalogFilters className="management-filters" disabled={!companyId || !branchId} onApply={setFilters}>
-        <SelectField label="Branch" value={branchId ?? ''}
-          options={branches.data.map((item) => ({ value: item.id, label: item.name }))}
-          onChange={(event) => {
-            setBranchId(event.target.value ? Number(event.target.value) : undefined);
-            setActionError(null);
-          }}
-          disabled={!companyId || branches.loading || branches.data.length === 0} required />
-      </CatalogFilters>
-      {branches.error && <div className="alert error">No se pudieron cargar las branches: {branches.error}</div>}
+      <CatalogFilters className="management-filters" disabled={!companyId || !branchId} onApply={setFilters} />
       {actionError && <div className="alert error">{actionError}</div>}
       <ManagementTable columns={columns} rows={data} loading={loading} error={error}
         rowKey={(item) => item.id}
         emptyMessage={companyId && branchId
           ? 'No hay especialidades para mostrar.'
-          : 'Selecciona una compañía en el selector global y una branch para consultar sus especialidades.'} />
+          : 'Selecciona compañía y branch en los selectores globales para consultar sus especialidades.'} />
       <ResourceModal open={modalOpen} title={editing ? 'Editar especialidad' : 'Nueva especialidad'} onClose={closeModal}>
         <form className="modal-form" onSubmit={(event) => void submit(event)}>
           <p className="muted">Branch: {branch?.name}</p>

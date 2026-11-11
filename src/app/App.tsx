@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CompaniesSection } from '../features/companies/presentation/pages/companies-section';
 import { CollaboratorDetailsPage } from '../features/collaborators/presentation/pages/collaborator-details-page';
 import { ProjectsSection } from '../features/projects/presentation/pages/projects-section';
@@ -10,9 +11,10 @@ import {
 import { AdvancedRelationshipsManagement } from '../features/relations/presentation/pages/advanced-relationships-management';
 import { StaffingSection } from '../features/staffing/presentation/pages/staffing-section';
 import { PeopleSection } from './people-section';
-import { CompanyProvider, GlobalCompanySelector } from './providers/company-context';
+import { CompanyProvider, GlobalCompanySelector, GlobalBranchSelector, InitialScopeModal } from './providers/company-context';
 
 export function App() {
+  const [scopeConfirmed, setScopeConfirmed] = useState(false);
   const searchParams = new URLSearchParams(window.location.search);
   const collaboratorId = Number(searchParams.get('collaboratorId'));
   if (Number.isInteger(collaboratorId) && collaboratorId > 0) {
@@ -52,9 +54,11 @@ export function App() {
 
         <div className="global-company-toolbar">
           <GlobalCompanySelector />
+          <GlobalBranchSelector />
         </div>
 
-        <main className="dashboard">
+        <InitialScopeModal open={!scopeConfirmed} onConfirm={() => setScopeConfirmed(true)} />
+        {scopeConfirmed && <main className="dashboard">
           <CompaniesSection />
           <PeopleSection />
           <ProjectsSection />
@@ -63,7 +67,7 @@ export function App() {
           <PlanningSection />
           <AdditionalCatalogsSection />
           <AdvancedRelationshipsManagement />
-        </main>
+        </main>}
       </div>
     </CompanyProvider>
   );
