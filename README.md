@@ -30,6 +30,10 @@ La vista inicial incluye tablas y formularios de alta para:
 - Projects.
 - Services y sus catálogos.
 
+Companies, Services y People organizan sus catálogos en pestañas. En esas
+secciones, los filtros se muestran sobre la tabla, y las altas y ediciones se
+realizan desde modales con acciones por fila para editar o desactivar.
+
 También incluye operaciones relacionadas con selectores alimentados desde la
 API para:
 
@@ -45,15 +49,29 @@ periodo, subperiodo, sección, fracción, especialidad y estado. La vista de
 detalle de proyecto consume las fechas que devuelve la API dentro de la
 planeación, sin volver a consultar cada catálogo de periodos y secciones.
 
-## Estándar de formularios
+## Estándar de catálogos
 
-Los formularios del proyecto deben conservar el patrón visual de la sección
-Collaborators: campos etiquetados con `Field` o `SelectField`, botón
-`SubmitButton`, distribución horizontal con ajuste automático de línea y
-espaciado uniforme. Los formularios de operaciones anidadas pueden usar
-`operation-form` para adaptarse al ancho de su tarjeta, pero comparten la misma
-distribución y controles. Los errores y resultados deben mostrarse dentro del
-formulario con los estilos compartidos existentes.
+Las secciones de administración de catálogos siguen el patrón de Companies:
+
+- Organizar catálogos relacionados en pestañas y mostrar en cada pestaña los
+  filtros aplicables en la parte superior de la tabla.
+- Mantener los filtros compactos; los filtros de texto requieren al menos tres
+  caracteres antes de consultar la API.
+- Mostrar el botón **Nuevo +** en la esquina superior derecha. El alta se hace
+  en un modal; la edición reutiliza el mismo modal con los datos del registro.
+- Incluir una columna de acciones al final de cada fila: lápiz amarillo para
+  editar y bote rojo para eliminar. La eliminación solicita confirmación y
+  respeta la baja lógica definida por la API.
+- Mostrar errores de consulta y de operación de forma visible, sin ocultar los
+  datos ni mostrar resultados de éxito cuando la operación falla.
+- Conservar las herramientas de asignación de relaciones fuera del CRUD del
+  catálogo cuando sean flujos independientes.
+
+Los componentes compartidos `ManagementTable`, `RowActions`, `ResourceModal` y
+`ModalActions` mantienen la tabla, los iconos y los formularios modales con el
+mismo comportamiento. Los formularios usan `Field`, `SelectField` y
+`SubmitButton`; las operaciones anidadas pueden conservar `operation-form`
+cuando corresponda.
 
 La estructura está organizada por funcionalidades y capas:
 

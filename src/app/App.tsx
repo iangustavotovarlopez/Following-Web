@@ -1,15 +1,16 @@
 import { CompaniesSection } from '../features/companies/presentation/pages/companies-section';
-import { CollaboratorsSection } from '../features/collaborators/presentation/pages/collaborators-section';
 import { CollaboratorDetailsPage } from '../features/collaborators/presentation/pages/collaborator-details-page';
-import { CollaboratorRolesSection } from '../features/collaborators/presentation/pages/collaborator-roles-section';
-import { CollaboratorRoleAssignmentsSection } from '../features/collaborators/presentation/pages/collaborator-role-assignments-section';
 import { ProjectsSection } from '../features/projects/presentation/pages/projects-section';
 import { ProjectDetailsPage } from '../features/projects/presentation/pages/project-details-page';
 import { ServicesSection } from '../features/services/presentation/pages/services-section';
-import { NestedResourceManagementSection } from '../features/companies/presentation/pages/nested-resource-management';
+import {
+  AdditionalCatalogsSection,
+  PlanningSection,
+} from '../features/companies/presentation/pages/nested-resource-management';
 import { AdvancedRelationshipsManagement } from '../features/relations/presentation/pages/advanced-relationships-management';
 import { StaffingSection } from '../features/staffing/presentation/pages/staffing-section';
 import { ApiResponseExport } from '../shared/components/api-response-export';
+import { PeopleSection } from './people-section';
 
 export function App() {
   const searchParams = new URLSearchParams(window.location.search);
@@ -57,13 +58,12 @@ export function App() {
 
       <main className="dashboard">
         <CompaniesSection />
-        <CollaboratorsSection />
-        <CollaboratorRolesSection />
-        <CollaboratorRoleAssignmentsSection />
+        <PeopleSection />
         <ProjectsSection />
         <StaffingSection />
         <ServicesSection />
-        <NestedResourceManagementSection />
+        <PlanningSection />
+        <AdditionalCatalogsSection />
         <AdvancedRelationshipsManagement />
       </main>
     </div>

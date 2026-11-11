@@ -42,6 +42,15 @@ export interface CompanyQuery extends PaginationQuery {
   'state.id'?: number;
 }
 
+export interface NameCodeCatalogQuery extends PaginationQuery {
+  name?: string;
+  code?: string;
+}
+
+export interface NameCatalogQuery extends PaginationQuery {
+  name?: string;
+}
+
 export interface CompanyCreateRequest {
   code: string;
   name: string;
@@ -196,6 +205,11 @@ export interface TeamCreateRequest {
   name: string;
 }
 
+export interface TeamPatchRequest {
+  name?: string;
+  isActive?: boolean;
+}
+
 export interface TeamMember {
   id: number;
   collaborator: {
@@ -262,7 +276,7 @@ export class CompaniesApi {
     return this.client.delete(`/companies/v0/companies/${id}`);
   }
 
-  listPeriods(companyId: number, query: PaginationQuery = {}) {
+  listPeriods(companyId: number, query: NameCodeCatalogQuery = {}) {
     return this.client.get<PageResponse<Period>>(
       `/companies/v0/companies/${companyId}/periods`,
       query,
@@ -283,7 +297,7 @@ export class CompaniesApi {
     );
   }
 
-  listSubperiods(companyId: number, periodId: number, query: PaginationQuery = {}) {
+  listSubperiods(companyId: number, periodId: number, query: NameCodeCatalogQuery = {}) {
     return this.client.get<PageResponse<Subperiod>>(
       `/companies/v0/companies/${companyId}/periods/${periodId}/subperiods`,
       query,
@@ -382,7 +396,7 @@ export class CompaniesApi {
     companyId: number,
     periodId: number,
     subperiodId: number,
-    query: PaginationQuery = {},
+    query: NameCodeCatalogQuery = {},
   ) {
     return this.client.get<PageResponse<Section>>(
       `/companies/v0/companies/${companyId}/periods/${periodId}/subperiods/${subperiodId}/sections`,
@@ -407,7 +421,7 @@ export class CompaniesApi {
     periodId: number,
     subperiodId: number,
     sectionId: number,
-    query: PaginationQuery = {},
+    query: NameCodeCatalogQuery = {},
   ) {
     return this.client.get<PageResponse<Fraction>>(
       `/companies/v0/companies/${companyId}/periods/${periodId}/subperiods/${subperiodId}/sections/${sectionId}/fractions`,
@@ -482,7 +496,7 @@ export class CompaniesApi {
     companyId: number,
     branchId: number,
     specialityId: number,
-    query: PaginationQuery = {},
+    query: NameCatalogQuery = {},
   ) {
     return this.client.get<PageResponse<Team>>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams`,
@@ -494,6 +508,25 @@ export class CompaniesApi {
     return this.client.post<Team>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams`,
       body,
+    );
+  }
+
+  patchTeam(
+    companyId: number,
+    branchId: number,
+    specialityId: number,
+    teamId: number,
+    body: TeamPatchRequest,
+  ) {
+    return this.client.patch<Team>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams/${teamId}`,
+      body,
+    );
+  }
+
+  deleteTeam(companyId: number, branchId: number, specialityId: number, teamId: number) {
+    return this.client.delete(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams/${teamId}`,
     );
   }
 

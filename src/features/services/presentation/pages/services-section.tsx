@@ -1,49 +1,41 @@
-import { useCallback, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react';
 import {
   servicesApi,
   type Environment,
-  type EnvironmentPatchRequest,
   type ServiceApplicationUnit,
-  type ServiceApplicationUnitPatchRequest,
   type ServiceGroup,
-  type ServiceGroupPatchRequest,
   type ServiceMetadata,
-  type ServiceMetadataPatchRequest,
 } from '../../infrastructure/api';
 import type { PageResponse } from '../../../../shared/api';
-import { ApiSection, ActiveBadge, type TableColumn } from '../../../../shared/components/api-section';
+import { ActiveBadge, type TableColumn } from '../../../../shared/components/api-section';
+import { CatalogFilters, type CatalogFilterValues } from '../../../../shared/components/catalog-filters';
 import { Field } from '../../../../shared/components/field';
+import { ManagementTable } from '../../../../shared/components/management-table';
+import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
+import { RowActions } from '../../../../shared/components/row-actions';
 import { SelectField } from '../../../../shared/components/select-field';
-import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
 
-interface CatalogCardProps<T> {
+type CatalogItem = { id: number; name: string; isActive: boolean };
+type CatalogForm = { code: string; name: string; isActive: boolean };
+type GroupForm = CatalogForm & { registeredDate: string; version: string };
+type ApplicationUnitForm = CatalogForm & { registeredDate: string };
+
+interface ManagedCatalogProps<T extends CatalogItem, Form extends object> {
   title: string;
   description: string;
   columns: TableColumn<T>[];
-  load: () => Promise<PageResponse<T> | null>;
-  form: (items: T[], refresh: () => void) => ReactNode;
-}
-
-function CatalogCard<T>({
-  title,
-  description,
-  columns,
-  load,
-  form,
-}: CatalogCardProps<T>) {
-  const { data, loading, error, refresh } = useApiList(load);
-  return (
-    <ApiSection
-      title={title}
-      description={description}
-      columns={columns}
-      rows={data}
-      loading={loading}
-      error={error}
-      form={form(data, refresh)}
-    />
-  );
+  initialForm: Form;
+  list: (filters: CatalogFilterValues) => Promise<PageResponse<T> | null>;
+  toForm: (item: T) => Form;
+  create: (form: Form) => Promise<unknown>;
+  update: (id: number, form: Form) => Promise<unknown>;
+  remove: (id: number) => Promise<unknown>;
+  renderFields: (
+    form: Form,
+    setForm: Dispatch<SetStateAction<Form>>,
+    editing: boolean,
+  ) => ReactNode;
 }
 
 const environmentColumns: TableColumn<Environment>[] = [
@@ -73,288 +65,258 @@ const metadataColumns: TableColumn<ServiceMetadata>[] = [
 ];
 
 export function ServicesSection() {
+  const [activeTab, setActiveTab] = useState('groups');
+  const tabs = [
+    { id: 'groups', label: 'Groups' },
+    { id: 'application-units', label: 'Application Units' },
+    { id: 'environments', label: 'Environments' },
+    { id: 'metadata', label: 'Metadata' },
+  ];
+
   return (
-    <div className="resource-grid">
-      <EnvironmentCard />
-      <GroupCard />
-      <ApplicationUnitCard />
-      <MetadataCard />
+    <section className="resource-section companies-management">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Catálogos</p>
+          <h2>Services</h2>
+          <p className="muted">Administra grupos, unidades aplicativas y ambientes.</p>
+        </div>
+      </div>
+      <div className="management-tabs" role="tablist" aria-label="Catálogos de servicios">
+        {tabs.map((tab) => (
+          <button
+            aria-selected={activeTab === tab.id}
+            className={activeTab === tab.id ? 'management-tab active' : 'management-tab'}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="management-tab-content" role="tabpanel">
+        {activeTab === 'groups' && (
+          <ManagedCatalog<ServiceGroup, GroupForm>
+            title="Service Groups"
+            description="Consulta y administra los grupos de servicios."
+            columns={groupColumns}
+            initialForm={{ code: '', name: '', registeredDate: '', version: '', isActive: true }}
+            list={(filters) => servicesApi.listGroups({ page: 1, pageSize: 100, ...filters })}
+            toForm={(item) => ({
+              code: item.code,
+              name: item.name,
+              registeredDate: item.registeredDate,
+              version: item.version,
+              isActive: item.isActive,
+            })}
+            create={(form) => servicesApi.createGroup({
+              code: form.code,
+              name: form.name,
+              registeredDate: form.registeredDate,
+              version: form.version,
+            })}
+            update={(id, form) => servicesApi.patchGroup(id, form)}
+            remove={(id) => servicesApi.deleteGroup(id)}
+            renderFields={(form, setForm, editing) => <>
+              <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
+              <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+              <Field label="Fecha de registro" type="date" value={form.registeredDate} onChange={(event) => setForm({ ...form, registeredDate: event.target.value })} required />
+              <Field label="Versión" value={form.version} onChange={(event) => setForm({ ...form, version: event.target.value })} required />
+              {editing && <ActiveField value={form.isActive} onChange={(isActive) => setForm({ ...form, isActive })} />}
+            </>}
+          />
+        )}
+        {activeTab === 'application-units' && (
+          <ManagedCatalog<ServiceApplicationUnit, ApplicationUnitForm>
+            title="Application Units"
+            description="Consulta y administra las unidades aplicativas."
+            columns={unitColumns}
+            initialForm={{ code: '', name: '', registeredDate: '', isActive: true }}
+            list={(filters) => servicesApi.listApplicationUnits({ page: 1, pageSize: 100, ...filters })}
+            toForm={(item) => ({
+              code: item.code,
+              name: item.name,
+              registeredDate: item.registeredDate,
+              isActive: item.isActive,
+            })}
+            create={(form) => servicesApi.createApplicationUnit({
+              code: form.code,
+              name: form.name,
+              registeredDate: form.registeredDate,
+            })}
+            update={(id, form) => servicesApi.patchApplicationUnit(id, form)}
+            remove={(id) => servicesApi.deleteApplicationUnit(id)}
+            renderFields={(form, setForm, editing) => <>
+              <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
+              <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+              <Field label="Fecha de registro" type="date" value={form.registeredDate} onChange={(event) => setForm({ ...form, registeredDate: event.target.value })} required />
+              {editing && <ActiveField value={form.isActive} onChange={(isActive) => setForm({ ...form, isActive })} />}
+            </>}
+          />
+        )}
+        {activeTab === 'environments' && (
+          <ManagedCatalog<Environment, CatalogForm>
+            title="Environments"
+            description="Consulta y administra los ambientes disponibles para los servicios."
+            columns={environmentColumns}
+            initialForm={{ code: '', name: '', isActive: true }}
+            list={(filters) => servicesApi.listEnvironments({ page: 1, pageSize: 100, ...filters })}
+            toForm={(item) => ({ code: item.code, name: item.name, isActive: item.isActive })}
+            create={(form) => servicesApi.createEnvironment({ code: form.code, name: form.name })}
+            update={(id, form) => servicesApi.patchEnvironment(id, form)}
+            remove={(id) => servicesApi.deleteEnvironment(id)}
+            renderFields={(form, setForm, editing) => <>
+              <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
+              <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+              {editing && <ActiveField value={form.isActive} onChange={(isActive) => setForm({ ...form, isActive })} />}
+            </>}
+          />
+        )}
+        {activeTab === 'metadata' && (
+          <ManagedCatalog<ServiceMetadata, CatalogForm>
+            title="Metadata"
+            description="Consulta y administra los metadatos disponibles para los servicios."
+            columns={metadataColumns}
+            initialForm={{ code: '', name: '', isActive: true }}
+            list={(filters) => servicesApi.listMetadata({ page: 1, pageSize: 100, ...filters })}
+            toForm={(item) => ({ code: item.code, name: item.name, isActive: item.isActive })}
+            create={(form) => servicesApi.createMetadata({ code: form.code, name: form.name })}
+            update={(id, form) => servicesApi.patchMetadata(id, form)}
+            remove={(id) => servicesApi.deleteMetadata(id)}
+            renderFields={(form, setForm, editing) => <>
+              <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
+              <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+              {editing && <ActiveField value={form.isActive} onChange={(isActive) => setForm({ ...form, isActive })} />}
+            </>}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ManagedCatalog<T extends CatalogItem, Form extends object>({
+  title,
+  description,
+  columns,
+  initialForm,
+  list,
+  toForm,
+  create,
+  update,
+  remove,
+  renderFields,
+}: ManagedCatalogProps<T, Form>) {
+  const [filters, setFilters] = useState<CatalogFilterValues>({});
+  const load = useCallback(() => list(filters), [filters, list]);
+  const { data, loading, error, refresh } = useApiList(load);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<T | null>(null);
+  const [form, setForm] = useState(initialForm);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  function openCreate() {
+    setEditingItem(null);
+    setForm({ ...initialForm });
+    setFormError(null);
+    setActionError(null);
+    setModalOpen(true);
+  }
+
+  function openEdit(item: T) {
+    setEditingItem(item);
+    setForm(toForm(item));
+    setFormError(null);
+    setActionError(null);
+    setModalOpen(true);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setFormError(null);
+    try {
+      if (editingItem) await update(editingItem.id, form);
+      else await create(form);
+      setModalOpen(false);
+      refresh();
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'No se pudo guardar el registro.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteItem(item: T) {
+    if (!window.confirm(`¿Deseas desactivar "${item.name}"?`)) return;
+    setActionError(null);
+    try {
+      await remove(item.id);
+      refresh();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'No se pudo desactivar el registro.');
+    }
+  }
+
+  const actionColumn: TableColumn<T> = {
+    key: 'actions',
+    label: 'Acciones',
+    render: (item) => (
+      <RowActions onEdit={() => openEdit(item)} onDelete={() => void deleteItem(item)} />
+    ),
+  };
+
+  return (
+    <div className="management-panel">
+      <div className="management-panel-heading">
+        <div>
+          <h3>{title}</h3>
+          <p className="muted">{description}</p>
+        </div>
+        <button className="button primary" onClick={openCreate} type="button">Nuevo +</button>
+      </div>
+      <div className="management-filters">
+        <CatalogFilters onApply={setFilters} />
+      </div>
+      {actionError && <div className="alert error">{actionError}</div>}
+      <ManagementTable
+        columns={[...columns, actionColumn]}
+        emptyMessage="No hay registros para mostrar."
+        loading={loading}
+        error={error}
+        rows={data}
+        rowKey={(item) => item.id}
+      />
+      <ResourceModal
+        open={modalOpen}
+        title={`${editingItem ? 'Editar' : 'Nuevo'} ${title}`}
+        onClose={() => setModalOpen(false)}
+      >
+        <form className="modal-form" onSubmit={(event) => void submit(event)}>
+          {renderFields(form, setForm, Boolean(editingItem))}
+          {formError && <div className="alert error">{formError}</div>}
+          <ModalActions
+            onCancel={() => setModalOpen(false)}
+            saving={saving}
+            submitLabel={editingItem ? 'Guardar cambios' : 'Crear'}
+          />
+        </form>
+      </ResourceModal>
     </div>
   );
 }
 
-function EnvironmentCard() {
-  const [code, setCode] = useState('');
-  const [name, setName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [editingId, setEditingId] = useState(0);
-  const [patch, setPatch] = useState<EnvironmentPatchRequest>({});
-  const load = useCallback(() => servicesApi.listEnvironments({ page: 1, pageSize: 20 }), [refreshKey]);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.createEnvironment({ code, name });
-      setCode('');
-      setName('');
-      setRefreshKey((value) => value + 1);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo guardar');
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function update(event: FormEvent, refresh: () => void) {
-    event.preventDefault();
-    if (!editingId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.patchEnvironment(editingId, patch);
-      refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
-    } finally {
-      setSaving(false);
-    }
-  }
+function ActiveField({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
   return (
-    <CatalogCard
-      title="Environments"
-      description="Ambientes disponibles para los servicios."
-      columns={environmentColumns}
-      load={load}
-      form={(items, refresh) => (
-        <div className="form-stack">
-          <form className="inline-form" onSubmit={submit}>
-            <Field label="Código" value={code} onChange={(e) => setCode(e.target.value)} required />
-            <Field label="Nombre" value={name} onChange={(e) => setName(e.target.value)} required />
-            <SubmitButton loading={saving}>Crear</SubmitButton>
-            {error && <span className="form-error">{error}</span>}
-          </form>
-          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
-            <SelectField label="Editar ambiente" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
-              const item = items.find((candidate) => candidate.id === Number(e.target.value));
-              setEditingId(item?.id ?? 0);
-              setPatch(item ? { code: item.code, name: item.name, isActive: item.isActive } : {});
-            }} required />
-            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
-            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
-            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
-            <SubmitButton loading={saving}>Actualizar</SubmitButton>
-          </form>
-        </div>
-      )}
-    />
-  );
-}
-
-function GroupCard() {
-  const [form, setForm] = useState({ code: '', name: '', registeredDate: '', version: '' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [editingId, setEditingId] = useState(0);
-  const [patch, setPatch] = useState<ServiceGroupPatchRequest>({});
-  const load = useCallback(() => servicesApi.listGroups({ page: 1, pageSize: 20 }), [refreshKey]);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.createGroup(form);
-      setForm({ code: '', name: '', registeredDate: '', version: '' });
-      setRefreshKey((value) => value + 1);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo guardar');
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function update(event: FormEvent, refresh: () => void) {
-    event.preventDefault();
-    if (!editingId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.patchGroup(editingId, patch);
-      refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <CatalogCard
-      title="Service groups"
-      description="Agrupadores de servicios."
-      columns={groupColumns}
-      load={load}
-      form={(items, refresh) => (
-        <div className="form-stack">
-          <form className="inline-form" onSubmit={submit}>
-            <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-            <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <Field label="Fecha" type="date" value={form.registeredDate} onChange={(e) => setForm({ ...form, registeredDate: e.target.value })} required />
-            <Field label="Versión" value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} required />
-            <SubmitButton loading={saving}>Crear</SubmitButton>
-            {error && <span className="form-error">{error}</span>}
-          </form>
-          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
-            <SelectField label="Editar grupo" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
-              const item = items.find((candidate) => candidate.id === Number(e.target.value));
-              setEditingId(item?.id ?? 0);
-              setPatch(item ? { code: item.code, name: item.name, registeredDate: item.registeredDate, version: item.version, isActive: item.isActive } : {});
-            }} required />
-            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
-            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
-            <Field label="Fecha" type="date" value={patch.registeredDate ?? ''} onChange={(e) => setPatch({ ...patch, registeredDate: e.target.value })} />
-            <Field label="Versión" value={patch.version ?? ''} onChange={(e) => setPatch({ ...patch, version: e.target.value })} />
-            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
-            <SubmitButton loading={saving}>Actualizar</SubmitButton>
-          </form>
-        </div>
-      )}
-    />
-  );
-}
-
-function ApplicationUnitCard() {
-  const [form, setForm] = useState({ code: '', name: '', registeredDate: '' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [editingId, setEditingId] = useState(0);
-  const [patch, setPatch] = useState<ServiceApplicationUnitPatchRequest>({});
-  const load = useCallback(() => servicesApi.listApplicationUnits({ page: 1, pageSize: 20 }), [refreshKey]);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.createApplicationUnit(form);
-      setForm({ code: '', name: '', registeredDate: '' });
-      setRefreshKey((value) => value + 1);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo guardar');
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function update(event: FormEvent, refresh: () => void) {
-    event.preventDefault();
-    if (!editingId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.patchApplicationUnit(editingId, patch);
-      refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <CatalogCard
-      title="Application units"
-      description="Unidades aplicativas asociadas a servicios."
-      columns={unitColumns}
-      load={load}
-      form={(items, refresh) => (
-        <div className="form-stack">
-          <form className="inline-form" onSubmit={submit}>
-            <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-            <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <Field label="Fecha" type="date" value={form.registeredDate} onChange={(e) => setForm({ ...form, registeredDate: e.target.value })} required />
-            <SubmitButton loading={saving}>Crear</SubmitButton>
-            {error && <span className="form-error">{error}</span>}
-          </form>
-          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
-            <SelectField label="Editar unidad" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
-              const item = items.find((candidate) => candidate.id === Number(e.target.value));
-              setEditingId(item?.id ?? 0);
-              setPatch(item ? { code: item.code, name: item.name, registeredDate: item.registeredDate, isActive: item.isActive } : {});
-            }} required />
-            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
-            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
-            <Field label="Fecha" type="date" value={patch.registeredDate ?? ''} onChange={(e) => setPatch({ ...patch, registeredDate: e.target.value })} />
-            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
-            <SubmitButton loading={saving}>Actualizar</SubmitButton>
-          </form>
-        </div>
-      )}
-    />
-  );
-}
-
-function MetadataCard() {
-  const [form, setForm] = useState({ code: '', name: '' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [editingId, setEditingId] = useState(0);
-  const [patch, setPatch] = useState<ServiceMetadataPatchRequest>({});
-  const load = useCallback(() => servicesApi.listMetadata({ page: 1, pageSize: 20 }), [refreshKey]);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.createMetadata(form);
-      setForm({ code: '', name: '' });
-      setRefreshKey((value) => value + 1);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo guardar');
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function update(event: FormEvent, refresh: () => void) {
-    event.preventDefault();
-    if (!editingId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await servicesApi.patchMetadata(editingId, patch);
-      refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar');
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <CatalogCard
-      title="Metadata"
-      description="Metadata disponible para los servicios."
-      columns={metadataColumns}
-      load={load}
-      form={(items, refresh) => (
-        <div className="form-stack">
-          <form className="inline-form" onSubmit={submit}>
-            <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
-            <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <SubmitButton loading={saving}>Crear</SubmitButton>
-            {error && <span className="form-error">{error}</span>}
-          </form>
-          <form className="inline-form" onSubmit={(event) => update(event, refresh)}>
-            <SelectField label="Editar metadata" value={editingId || ''} options={items.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
-              const item = items.find((candidate) => candidate.id === Number(e.target.value));
-              setEditingId(item?.id ?? 0);
-              setPatch(item ? { code: item.code, name: item.name, isActive: item.isActive } : {});
-            }} required />
-            <Field label="Código" value={patch.code ?? ''} onChange={(e) => setPatch({ ...patch, code: e.target.value })} />
-            <Field label="Nombre" value={patch.name ?? ''} onChange={(e) => setPatch({ ...patch, name: e.target.value })} />
-            <SelectField label="Activo" value={patch.isActive === undefined ? '' : String(patch.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(e) => setPatch({ ...patch, isActive: e.target.value === 'true' })} />
-            <SubmitButton loading={saving}>Actualizar</SubmitButton>
-          </form>
-        </div>
-      )}
+    <SelectField
+      label="Estado"
+      value={String(value)}
+      options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]}
+      onChange={(event) => onChange(event.target.value === 'true')}
     />
   );
 }

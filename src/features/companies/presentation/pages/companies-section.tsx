@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   companiesApi,
   type Branch,
@@ -18,6 +18,9 @@ import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
+import { ManagementTable } from '../../../../shared/components/management-table';
+import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
+import { RowActions } from '../../../../shared/components/row-actions';
 
 const pagination = { page: 1, pageSize: 100 };
 type ResourceTab = 'companies' | 'branches' | 'technologies';
@@ -645,124 +648,6 @@ function TabHeading({
       <button className="button primary" type="button" disabled={disabled} onClick={onCreate}>
         Nuevo +
       </button>
-    </div>
-  );
-}
-
-function ManagementTable<T>({
-  columns,
-  rows,
-  loading,
-  error,
-  rowKey,
-  emptyMessage,
-}: {
-  columns: TableColumn<T>[];
-  rows: T[];
-  loading: boolean;
-  error: string | null;
-  rowKey: (item: T) => string | number;
-  emptyMessage: string;
-}) {
-  if (error) return <div className="alert error">{error}</div>;
-  if (loading) return <div className="empty-state">Consultando API...</div>;
-  if (rows.length === 0) return <div className="empty-state">{emptyMessage}</div>;
-  return (
-    <div className="table-container">
-      <table>
-        <thead>
-          <tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={rowKey(row)}>
-              {columns.map((column) => <td key={column.key}>{column.render(row)}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
-  return (
-    <div className="row-actions">
-      <button
-        aria-label="Editar"
-        className="row-action-button edit"
-        onClick={onEdit}
-        title="Editar"
-        type="button"
-      >
-        <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 24 24">
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-        </svg>
-      </button>
-      <button
-        aria-label="Eliminar"
-        className="row-action-button delete"
-        onClick={onDelete}
-        title="Eliminar"
-        type="button"
-      >
-        <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 24 24">
-          <path d="M3 6h18" />
-          <path d="M8 6V4h8v2" />
-          <path d="m19 6-1 14H6L5 6" />
-          <path d="M10 11v6M14 11v6" />
-        </svg>
-      </button>
-    </div>
-  );
-}
-
-function ResourceModal({
-  open,
-  title,
-  onClose,
-  children,
-}: {
-  open: boolean;
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  if (!open) return null;
-  const titleId = `modal-${title.toLowerCase().replaceAll(' ', '-')}`;
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="management-modal"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-      >
-        <div className="management-modal-heading">
-          <h3 id={titleId}>{title}</h3>
-          <button aria-label="Cerrar" className="modal-close" onClick={onClose} type="button">×</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ModalActions({
-  onCancel,
-  saving,
-  submitLabel,
-}: {
-  onCancel: () => void;
-  saving: boolean;
-  submitLabel: string;
-}) {
-  return (
-    <div className="modal-actions">
-      <button className="button secondary" onClick={onCancel} type="button">Cancelar</button>
-      <SubmitButton loading={saving}>{submitLabel}</SubmitButton>
     </div>
   );
 }

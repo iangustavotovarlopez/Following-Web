@@ -4,6 +4,7 @@ import {
   type Collaborator,
   type CollaboratorRole,
 } from '../../infrastructure/api';
+import { API_MUTATION_EVENT, type ApiMutationDetail } from '../../../../shared/api';
 import { Field } from '../../../../shared/components/field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 
@@ -53,21 +54,34 @@ export function CollaboratorRoleAssignmentsSection() {
 
   useEffect(() => {
     let active = true;
-    loadRoles()
-      .then((response) => {
-        if (active) setRoles(response);
-      })
-      .catch((cause) => {
-        if (active) {
-          setRolesError(cause instanceof Error ? cause.message : 'No se pudo consultar el catálogo de roles');
-        }
-      })
-      .finally(() => {
-        if (active) setRolesLoading(false);
-      });
+    const refreshRoles = () => {
+      setRolesLoading(true);
+      setRolesError(null);
+      loadRoles()
+        .then((response) => {
+          if (active) setRoles(response);
+        })
+        .catch((cause) => {
+          if (active) {
+            setRolesError(cause instanceof Error ? cause.message : 'No se pudo consultar el catálogo de roles');
+          }
+        })
+        .finally(() => {
+          if (active) setRolesLoading(false);
+        });
+    };
+    const handleMutation = (event: Event) => {
+      const { path } = (event as CustomEvent<ApiMutationDetail>).detail;
+      if (path === '/collaborators/v0/roles' || /^\/collaborators\/v0\/roles\/\d+$/.test(path)) {
+        refreshRoles();
+      }
+    };
+    refreshRoles();
+    window.addEventListener(API_MUTATION_EVENT, handleMutation);
 
     return () => {
       active = false;
+      window.removeEventListener(API_MUTATION_EVENT, handleMutation);
     };
   }, []);
 
@@ -90,7 +104,8 @@ export function CollaboratorRoleAssignmentsSection() {
           if (active) {
             setCollaboratorMatches(
               (response?.content ?? []).filter((collaborator) =>
-                collaborator.code.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+                collaborator.state.name.trim().toUpperCase() !== 'INACTIVO'
+                && collaborator.code.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
               ),
             );
           }
@@ -115,7 +130,8 @@ export function CollaboratorRoleAssignmentsSection() {
 
   const roleMatches = roleQuery.trim()
     ? roles
-        .filter((role) => role.code.toLocaleLowerCase().includes(roleQuery.trim().toLocaleLowerCase()))
+        .filter((role) => role.isActive
+          && role.code.toLocaleLowerCase().includes(roleQuery.trim().toLocaleLowerCase()))
         .slice(0, 8)
     : [];
 

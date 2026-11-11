@@ -235,6 +235,34 @@ button {
   background: #f8fafc;
 }
 
+.catalog-filter-form {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: end;
+  gap: 12px;
+  margin: 0;
+}
+
+.catalog-filter-error {
+  grid-column: 1 / -1;
+}
+
+.people-management {
+  overflow: visible;
+}
+
+.companies-management > .management-tab-content > .resource-section,
+.companies-management > .management-tab-content > .resource-grid > .resource-section {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.additional-catalog-grid {
+  padding: 24px;
+}
+
 .staffing-filter-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));

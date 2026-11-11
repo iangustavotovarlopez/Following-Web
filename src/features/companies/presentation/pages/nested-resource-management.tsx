@@ -18,7 +18,11 @@ import {
   ApiSection,
   type TableColumn,
 } from '../../../../shared/components/api-section';
+import { CatalogFilters, type CatalogFilterValues } from '../../../../shared/components/catalog-filters';
 import { Field } from '../../../../shared/components/field';
+import { ManagementTable } from '../../../../shared/components/management-table';
+import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
+import { RowActions } from '../../../../shared/components/row-actions';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiAction } from '../../../../shared/hooks/use-api-action';
@@ -37,6 +41,7 @@ import {
   type Speciality,
   type Subperiod,
   type Team,
+  type TeamPatchRequest,
   type TeamMember,
 } from '../../infrastructure/api';
 import { collaboratorsApi, type Collaborator } from '../../../collaborators/infrastructure/api';
@@ -119,7 +124,6 @@ function ManagedResourceSection<T, Form>({
   const formView = (
     <div className="form-stack">
       <form className="form-stack" onSubmit={submit}>
-        {filterFields && <div className="inline-form">{filterFields}</div>}
         <div className="inline-form">
           {renderFields(form, setForm)}
           <SubmitButton loading={action.loading} disabled={!enabled}>Crear</SubmitButton>
@@ -139,32 +143,90 @@ function ManagedResourceSection<T, Form>({
       loading={loading}
       error={error}
       form={formView}
+      filters={filterFields}
     />
   );
 }
 
-export function NestedResourceManagementSection() {
+export function PlanningSection() {
+  const companies = useOptions('planning-companies', () => companiesApi.listCompanies(pagination));
+  const [catalogRevision, setCatalogRevision] = useState(0);
+  const [activeTab, setActiveTab] = useState('periods');
+  const refreshCatalogs = () => setCatalogRevision((revision) => revision + 1);
+  const tabs = [
+    { id: 'periods', label: 'Periods' },
+    { id: 'subperiods', label: 'Subperiods' },
+    { id: 'sections', label: 'Sections' },
+    { id: 'fractions', label: 'Fractions' },
+  ];
+
+  return (
+    <section className="resource-section companies-management">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Catálogos</p>
+          <h2>Planning</h2>
+          <p className="muted">Administra periodos, subperiodos, secciones y fracciones.</p>
+        </div>
+      </div>
+      <div className="management-tabs" role="tablist" aria-label="Catálogos de planeación">
+        {tabs.map((tab) => (
+          <button
+            aria-selected={activeTab === tab.id}
+            className={activeTab === tab.id ? 'management-tab active' : 'management-tab'}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="management-tab-content" role="tabpanel">
+        {activeTab === 'periods' && (
+          <PeriodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        )}
+        {activeTab === 'subperiods' && (
+          <SubperiodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        )}
+        {activeTab === 'sections' && (
+          <SectionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        )}
+        {activeTab === 'fractions' && (
+          <FractionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function AdditionalCatalogsSection() {
   const companies = useOptions('companies', () => companiesApi.listCompanies(pagination));
   const [catalogRevision, setCatalogRevision] = useState(0);
   const refreshCatalogs = () => setCatalogRevision((revision) => revision + 1);
 
   return (
-    <div className="resource-grid">
-      <PeriodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <SubperiodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <SpecialitiesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <SectionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <FractionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <SkillsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <SkillLevelsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <TeamsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <DeliverablesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-      <TeamMembersSection
-        companies={companies}
-        revision={catalogRevision}
-        onSaved={refreshCatalogs}
-      />
-    </div>
+    <section className="resource-section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Catálogos</p>
+          <h2>Additional catalogs</h2>
+          <p className="muted">Administra especialidades, skills, entregables y miembros de equipos.</p>
+        </div>
+      </div>
+      <div className="resource-grid additional-catalog-grid">
+        <SpecialitiesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <SkillsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <SkillLevelsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <DeliverablesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <TeamMembersSection
+          companies={companies}
+          revision={catalogRevision}
+          onSaved={refreshCatalogs}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -174,8 +236,9 @@ function PeriodsSection({ companies, revision, onSaved }: {
   onSaved: () => void;
 }) {
   const [companyId, setCompanyId] = useState<Id>();
-  const load = useScopedList(`periods:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listPeriods(companyId, pagination) : Promise.resolve(null),
+  const [filters, setFilters] = useState<CatalogFilterValues>({});
+  const load = useScopedList(`periods:${companyId}:${revision}:${JSON.stringify(filters)}`, () =>
+    companyId ? companiesApi.listPeriods(companyId, { ...pagination, ...filters }) : Promise.resolve(null),
   );
   const columns: TableColumn<Period>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
@@ -190,18 +253,19 @@ function PeriodsSection({ companies, revision, onSaved }: {
 
   return (
     <ManagedResourceSection
-      title="Periodos"
+      title="Periods"
       description="Consulta y registra periodos para una compañía."
       columns={columns}
       rows={load.data}
       loading={load.loading}
       error={load.error}
       enabled={Boolean(companyId)}
-      filterFields={(
+      filterFields={<>
         <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
           setCompanyId(idOf(event.target.value));
         }} required />
-      )}
+        <CatalogFilters onApply={setFilters} />
+      </>}
       initialForm={{ name: '', code: '', startDate: '', endDate: '' }}
       renderFields={(form, setForm) => <>
         <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
@@ -266,11 +330,12 @@ function SubperiodsSection({ companies, revision, onSaved }: {
 }) {
   const [companyId, setCompanyId] = useState<Id>();
   const [periodId, setPeriodId] = useState<Id>();
+  const [filters, setFilters] = useState<CatalogFilterValues>({});
   const periods = useOptions(`subperiod-periods:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listPeriods(companyId, pagination) : Promise.resolve(null),
   );
-  const load = useScopedList(`subperiods:${companyId}:${periodId}:${revision}`, () =>
-    companyId && periodId ? companiesApi.listSubperiods(companyId, periodId, pagination) : Promise.resolve(null),
+  const load = useScopedList(`subperiods:${companyId}:${periodId}:${revision}:${JSON.stringify(filters)}`, () =>
+    companyId && periodId ? companiesApi.listSubperiods(companyId, periodId, { ...pagination, ...filters }) : Promise.resolve(null),
   );
   const columns: TableColumn<Subperiod>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
@@ -282,7 +347,7 @@ function SubperiodsSection({ companies, revision, onSaved }: {
 
   return (
     <ManagedResourceSection
-      title="Subperiodos"
+      title="Subperiods"
       description="Consulta y registra subperiodos dentro de un periodo."
       columns={columns}
       rows={load.data}
@@ -295,6 +360,7 @@ function SubperiodsSection({ companies, revision, onSaved }: {
           setPeriodId(undefined);
         }} required />
         <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(event) => setPeriodId(idOf(event.target.value))} disabled={!companyId} required />
+        <CatalogFilters onApply={setFilters} />
       </>}
       initialForm={{ name: '', code: '', startDate: '', endDate: '' }}
       renderFields={(form, setForm) => <>
@@ -365,14 +431,15 @@ function SectionsSection({ companies, revision, onSaved }: {
   const [companyId, setCompanyId] = useState<Id>();
   const [periodId, setPeriodId] = useState<Id>();
   const [subperiodId, setSubperiodId] = useState<Id>();
+  const [filters, setFilters] = useState<CatalogFilterValues>({});
   const periods = useOptions(`section-periods:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listPeriods(companyId, pagination) : Promise.resolve(null),
   );
   const subperiods = useOptions(`section-subperiods:${companyId}:${periodId}:${revision}`, () =>
     companyId && periodId ? companiesApi.listSubperiods(companyId, periodId, pagination) : Promise.resolve(null),
   );
-  const load = useScopedList(`sections:${companyId}:${periodId}:${subperiodId}:${revision}`, () =>
-    companyId && periodId && subperiodId ? companiesApi.listSections(companyId, periodId, subperiodId, pagination) : Promise.resolve(null),
+  const load = useScopedList(`sections:${companyId}:${periodId}:${subperiodId}:${revision}:${JSON.stringify(filters)}`, () =>
+    companyId && periodId && subperiodId ? companiesApi.listSections(companyId, periodId, subperiodId, { ...pagination, ...filters }) : Promise.resolve(null),
   );
   const columns: TableColumn<Section>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
@@ -383,7 +450,7 @@ function SectionsSection({ companies, revision, onSaved }: {
 
   return (
     <ManagedResourceSection
-      title="Secciones"
+      title="Sections"
       description="Consulta y registra secciones dentro de un subperiodo."
       columns={columns}
       rows={load.data}
@@ -401,6 +468,7 @@ function SectionsSection({ companies, revision, onSaved }: {
           setSubperiodId(undefined);
         }} disabled={!companyId} required />
         <SelectField label="Subperiodo" value={subperiodId ?? ''} options={optionsOf(subperiods, (item) => item.name)} onChange={(event) => setSubperiodId(idOf(event.target.value))} disabled={!periodId} required />
+        <CatalogFilters onApply={setFilters} />
       </>}
       initialForm={{ name: '', code: '', startDate: '', endDate: '' }}
       renderFields={(form, setForm) => <>
@@ -424,6 +492,7 @@ function FractionsSection({ companies, revision, onSaved }: {
   const [periodId, setPeriodId] = useState<Id>();
   const [subperiodId, setSubperiodId] = useState<Id>();
   const [sectionId, setSectionId] = useState<Id>();
+  const [filters, setFilters] = useState<CatalogFilterValues>({});
   const periods = useOptions(`fraction-periods:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listPeriods(companyId, pagination) : Promise.resolve(null),
   );
@@ -433,8 +502,8 @@ function FractionsSection({ companies, revision, onSaved }: {
   const sections = useOptions(`fraction-sections:${companyId}:${periodId}:${subperiodId}:${revision}`, () =>
     companyId && periodId && subperiodId ? companiesApi.listSections(companyId, periodId, subperiodId, pagination) : Promise.resolve(null),
   );
-  const load = useScopedList(`fractions:${companyId}:${periodId}:${subperiodId}:${sectionId}:${revision}`, () =>
-    companyId && periodId && subperiodId && sectionId ? companiesApi.listFractions(companyId, periodId, subperiodId, sectionId, pagination) : Promise.resolve(null),
+  const load = useScopedList(`fractions:${companyId}:${periodId}:${subperiodId}:${sectionId}:${revision}:${JSON.stringify(filters)}`, () =>
+    companyId && periodId && subperiodId && sectionId ? companiesApi.listFractions(companyId, periodId, subperiodId, sectionId, { ...pagination, ...filters }) : Promise.resolve(null),
   );
   const columns: TableColumn<Fraction>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
@@ -445,7 +514,7 @@ function FractionsSection({ companies, revision, onSaved }: {
 
   return (
     <ManagedResourceSection
-      title="Fracciones"
+      title="Fractions"
       description="Consulta y registra fracciones dentro de una sección."
       columns={columns}
       rows={load.data}
@@ -469,6 +538,7 @@ function FractionsSection({ companies, revision, onSaved }: {
           setSectionId(undefined);
         }} disabled={!periodId} required />
         <SelectField label="Sección" value={sectionId ?? ''} options={optionsOf(sections, (item) => item.name)} onChange={(event) => setSectionId(idOf(event.target.value))} disabled={!subperiodId} required />
+        <CatalogFilters onApply={setFilters} />
       </>}
       initialForm={{ name: '', code: '', startDate: '', endDate: '' }}
       renderFields={(form, setForm) => <>
@@ -601,7 +671,7 @@ function SkillLevelsSection({ companies, revision, onSaved }: {
   );
 }
 
-function TeamsSection({ companies, revision, onSaved }: {
+export function TeamsSection({ companies, revision, onSaved }: {
   companies: Company[];
   revision: number;
   onSaved: () => void;
@@ -609,29 +679,96 @@ function TeamsSection({ companies, revision, onSaved }: {
   const [companyId, setCompanyId] = useState<Id>();
   const [branchId, setBranchId] = useState<Id>();
   const [specialityId, setSpecialityId] = useState<Id>();
+  const [filters, setFilters] = useState<CatalogFilterValues>({});
   const branches = useOptions(`team-branches:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
   );
   const specialities = useOptions(`team-specialities:${companyId}:${branchId}:${revision}`, () =>
     companyId && branchId ? companiesApi.listSpecialities(companyId, branchId, pagination) : Promise.resolve(null),
   );
-  const load = useScopedList(`teams:${companyId}:${branchId}:${specialityId}:${revision}`, () =>
-    companyId && branchId && specialityId ? companiesApi.listTeams(companyId, branchId, specialityId, pagination) : Promise.resolve(null),
+  const load = useScopedList(`teams:${companyId}:${branchId}:${specialityId}:${revision}:${JSON.stringify(filters)}`, () =>
+    companyId && branchId && specialityId ? companiesApi.listTeams(companyId, branchId, specialityId, { ...pagination, ...filters }) : Promise.resolve(null),
   );
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [form, setForm] = useState({ name: '', isActive: true });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  function openModal(team?: Team) {
+    setEditingTeam(team ?? null);
+    setForm(team ? { name: team.name, isActive: team.isActive } : { name: '', isActive: true });
+    setFormError(null);
+    setActionError(null);
+    setModalOpen(true);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!companyId || !branchId || !specialityId) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      if (editingTeam) {
+        const patch: TeamPatchRequest = { name: form.name.trim(), isActive: form.isActive };
+        await companiesApi.patchTeam(companyId, branchId, specialityId, editingTeam.id, patch);
+      } else {
+        await companiesApi.createTeam(companyId, branchId, specialityId, { name: form.name.trim() });
+      }
+      setModalOpen(false);
+      onSaved();
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'No se pudo guardar el equipo.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteTeam(team: Team) {
+    if (!companyId || !branchId || !specialityId
+      || !window.confirm(`¿Deseas desactivar el equipo "${team.name}"?`)) return;
+    setActionError(null);
+    try {
+      await companiesApi.deleteTeam(companyId, branchId, specialityId, team.id);
+      onSaved();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : 'No se pudo desactivar el equipo.');
+    }
+  }
+
   const columns: TableColumn<Team>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
     { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
+    {
+      key: 'actions',
+      label: 'Acciones',
+      render: (item) => (
+        <RowActions
+          onEdit={() => openModal(item)}
+          onDelete={() => void deleteTeam(item)}
+        />
+      ),
+    },
   ];
+
   return (
-    <ManagedResourceSection
-      title="Equipos"
-      description="Consulta y registra equipos para una especialidad."
-      columns={columns}
-      rows={load.data}
-      loading={load.loading}
-      error={load.error}
-      enabled={Boolean(companyId && branchId && specialityId)}
-      filterFields={<>
+    <div className="management-panel">
+      <div className="management-panel-heading">
+        <div>
+          <h3>Teams</h3>
+          <p className="muted">Consulta y administra equipos para una especialidad.</p>
+        </div>
+        <button
+          className="button primary"
+          disabled={!companyId || !branchId || !specialityId}
+          onClick={() => openModal()}
+          type="button"
+        >
+          Nuevo +
+        </button>
+      </div>
+      <div className="management-filters">
         <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
           setCompanyId(idOf(event.target.value));
           setBranchId(undefined);
@@ -642,12 +779,43 @@ function TeamsSection({ companies, revision, onSaved }: {
           setSpecialityId(undefined);
         }} disabled={!companyId} required />
         <SelectField label="Especialidad" value={specialityId ?? ''} options={optionsOf(specialities, (item) => item.name)} onChange={(event) => setSpecialityId(idOf(event.target.value))} disabled={!branchId} required />
-      </>}
-      initialForm={{ name: '' }}
-      renderFields={(form, setForm) => <Field label="Nombre" value={form.name} onChange={(event) => setForm({ name: event.target.value })} required />}
-      create={(form) => companyId && branchId && specialityId ? companiesApi.createTeam(companyId, branchId, specialityId, form) : Promise.resolve(null)}
-      onSaved={onSaved}
-    />
+        <CatalogFilters showCode={false} onApply={setFilters} />
+      </div>
+      {actionError && <div className="alert error">{actionError}</div>}
+      <ManagementTable
+        columns={columns}
+        emptyMessage={companyId && branchId && specialityId
+          ? 'No hay equipos para mostrar.'
+          : 'Selecciona compañía, branch y especialidad para consultar los equipos.'}
+        loading={load.loading}
+        error={load.error}
+        rows={load.data}
+        rowKey={(item) => item.id}
+      />
+      <ResourceModal
+        open={modalOpen}
+        title={editingTeam ? 'Editar equipo' : 'Nuevo equipo'}
+        onClose={() => setModalOpen(false)}
+      >
+        <form className="modal-form" onSubmit={(event) => void submit(event)}>
+          <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+          {editingTeam && (
+            <SelectField
+              label="Estado"
+              value={String(form.isActive)}
+              options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]}
+              onChange={(event) => setForm({ ...form, isActive: event.target.value === 'true' })}
+            />
+          )}
+          {formError && <div className="alert error">{formError}</div>}
+          <ModalActions
+            onCancel={() => setModalOpen(false)}
+            saving={saving}
+            submitLabel={editingTeam ? 'Guardar cambios' : 'Crear equipo'}
+          />
+        </form>
+      </ResourceModal>
+    </div>
   );
 }
 
@@ -778,10 +946,14 @@ function TeamMembersSection({ companies, revision, onSaved }: {
   const teams = useOptions(`member-teams:${companyId}:${branchId}:${specialityId}:${revision}`, () =>
     companyId && branchId && specialityId ? companiesApi.listTeams(companyId, branchId, specialityId, pagination) : Promise.resolve(null),
   );
+  const selectedTeam = teams.find((team) => team.id === teamId);
   const collaborators = useScopedList(`member-collaborators:${companyId}:${collaboratorRevision}`, () =>
     companyId
       ? collaboratorsApi.listCollaborators({ 'company.id': companyId, ...pagination })
       : Promise.resolve(null),
+  );
+  const activeCollaborators = collaborators.data.filter(
+    (collaborator) => collaborator.state.name.trim().toUpperCase() !== 'INACTIVO',
   );
   const collaboratorsById = new Map(collaborators.data.map((collaborator) => [collaborator.id, collaborator]));
   const load = useScopedList(`members:${companyId}:${branchId}:${specialityId}:${teamId}:${revision}`, () =>
@@ -828,11 +1000,12 @@ function TeamMembersSection({ companies, revision, onSaved }: {
         <SelectField label="Equipo" value={teamId ?? ''} options={optionsOf(teams, (item) => item.name)} onChange={(event) => setTeamId(idOf(event.target.value))} disabled={!specialityId} required />
       </div>
       <div className="inline-form">
-        <SelectField label="Colaborador" value={form.collaboratorId ?? ''} options={optionsOf(collaborators.data, collaboratorLabel)} onChange={(event) => setForm({ collaboratorId: idOf(event.target.value) })} disabled={!companyId || collaborators.loading} required />
-        <SubmitButton loading={action.loading} disabled={!companyId || !branchId || !specialityId || !teamId || !form.collaboratorId}>Asignar</SubmitButton>
+        <SelectField label="Colaborador" value={form.collaboratorId ?? ''} options={optionsOf(activeCollaborators, collaboratorLabel)} onChange={(event) => setForm({ collaboratorId: idOf(event.target.value) })} disabled={!companyId || collaborators.loading} required />
+        <SubmitButton loading={action.loading} disabled={!companyId || !branchId || !specialityId || !teamId || !selectedTeam?.isActive || !form.collaboratorId}>Asignar</SubmitButton>
+        {selectedTeam && !selectedTeam.isActive && <span className="muted">No se pueden asignar miembros a un equipo inactivo.</span>}
         {collaborators.loading && <span className="muted">Cargando colaboradores...</span>}
         {collaborators.error && <span className="form-error">{collaborators.error}</span>}
-        {!collaborators.loading && !collaborators.error && companyId && collaborators.data.length === 0 && <span className="muted">No hay colaboradores para esta compañía.</span>}
+        {!collaborators.loading && !collaborators.error && companyId && activeCollaborators.length === 0 && <span className="muted">No hay colaboradores activos para esta compañía.</span>}
         {action.error && <span className="form-error">{action.error}</span>}
       </div>
     </form>

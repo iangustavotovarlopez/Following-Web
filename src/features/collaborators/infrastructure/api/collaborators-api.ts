@@ -14,6 +14,13 @@ export interface CollaboratorCatalogItem {
 export interface CollaboratorRole extends CollaboratorCatalogItem {
   code: string;
 }
+
+export interface CollaboratorRolePatchRequest {
+  code?: string;
+  name?: string;
+  isActive?: boolean;
+}
+
 export interface CollaboratorState extends CollaboratorCatalogItem {}
 
 export interface CollaboratorRoleRelation {
@@ -65,6 +72,8 @@ export interface CreateCollaboratorRequest {
   hireDate: string;
   separationDate?: string;
 }
+
+export interface PatchCollaboratorRequest extends CreateCollaboratorRequest {}
 
 export interface CollaboratorSpeciality {
   id: number;
@@ -123,7 +132,7 @@ export interface PatchCollaboratorTechnologySkillRequest {
 export class CollaboratorsApi {
   constructor(private readonly client: HttpClient = httpClient) {}
 
-  listRoles(query: PaginationQuery & { name?: string } = {}) {
+  listRoles(query: PaginationQuery & { code?: string; name?: string } = {}) {
     return this.client.get<PageResponse<CollaboratorRole>>(
       '/collaborators/v0/roles',
       query,
@@ -132,6 +141,14 @@ export class CollaboratorsApi {
 
   createRole(body: { code: string; name: string }) {
     return this.client.post<CollaboratorRole>('/collaborators/v0/roles', body);
+  }
+
+  patchRole(id: number, body: CollaboratorRolePatchRequest) {
+    return this.client.patch<CollaboratorRole>(`/collaborators/v0/roles/${id}`, body);
+  }
+
+  deleteRole(id: number) {
+    return this.client.delete(`/collaborators/v0/roles/${id}`);
   }
 
   listStates(query: PaginationQuery & { name?: string } = {}) {
@@ -154,6 +171,14 @@ export class CollaboratorsApi {
 
   createCollaborator(body: CreateCollaboratorRequest) {
     return this.client.post<Collaborator>('/collaborators/v0/collaborators', body);
+  }
+
+  patchCollaborator(id: number, body: PatchCollaboratorRequest) {
+    return this.client.patch<Collaborator>(`/collaborators/v0/collaborators/${id}`, body);
+  }
+
+  deleteCollaborator(id: number) {
+    return this.client.delete(`/collaborators/v0/collaborators/${id}`);
   }
 
   listRoleRelations(collaboratorId: number, query: PaginationQuery = {}) {
