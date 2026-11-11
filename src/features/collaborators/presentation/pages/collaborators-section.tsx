@@ -13,7 +13,7 @@ import { RowActions } from '../../../../shared/components/row-actions';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
-import { companiesApi, type Company } from '../../../companies/infrastructure/api';
+import { useGlobalCompany } from '../../../../app/providers/company-context';
 
 const initialForm: CreateCollaboratorRequest = {
   code: '',
@@ -39,7 +39,8 @@ const fullName = (item: Collaborator) => [
 ].filter(Boolean).join(' ');
 
 export function CollaboratorsSection() {
-  const [filterDraft, setFilterDraft] = useState({ code: '', name: '', companyId: '', stateId: '' });
+  const { companies, selectedCompanyId, loading: companiesLoading } = useGlobalCompany();
+  const [filterDraft, setFilterDraft] = useState({ code: '', name: '', stateId: '' });
   const [filters, setFilters] = useState(filterDraft);
   const [filterError, setFilterError] = useState<string | null>(null);
   const load = useCallback(
@@ -48,13 +49,15 @@ export function CollaboratorsSection() {
       pageSize: 100,
       code: filters.code || undefined,
       name: filters.name || undefined,
-      'company.id': filters.companyId ? Number(filters.companyId) : undefined,
+      'company.id': selectedCompanyId,
       'state.id': filters.stateId ? Number(filters.stateId) : undefined,
     }),
-    [filters],
+    [filters, selectedCompanyId],
   );
   const { data, loading, error, refresh } = useApiList(load);
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const visibleCollaborators = selectedCompanyId
+    ? data.filter((collaborator) => collaborator.company.id === selectedCompanyId)
+    : data;
   const [states, setStates] = useState<CollaboratorState[]>([]);
   const [referencesLoading, setReferencesLoading] = useState(true);
   const [referencesError, setReferencesError] = useState<string | null>(null);
@@ -70,12 +73,8 @@ export function CollaboratorsSection() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      companiesApi.listCompanies({ page: 1, pageSize: 100 }),
-      collaboratorsApi.listStates({ page: 1, pageSize: 100 }),
-    ]).then(([companyResponse, stateResponse]) => {
+    collaboratorsApi.listStates({ page: 1, pageSize: 100 }).then((stateResponse) => {
       if (!active) return;
-      setCompanies(companyResponse?.content ?? []);
       setStates(stateResponse?.content ?? []);
     }).catch((cause: Error) => {
       if (active) setReferencesError(cause.message);
@@ -86,6 +85,12 @@ export function CollaboratorsSection() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!editingCollaborator) {
+      setForm((current) => ({ ...current, company: { id: selectedCompanyId ?? 0 } }));
+    }
+  }, [editingCollaborator, selectedCompanyId]);
 
   const columns: TableColumn<Collaborator>[] = [
     { key: 'code', label: 'Código', render: (item) => item.code },
@@ -127,7 +132,7 @@ export function CollaboratorsSection() {
       state: { id: collaborator.state.id },
       hireDate: collaborator.hireDate,
       separationDate: collaborator.separationDate ?? '',
-    } : { ...initialForm });
+    } : { ...initialForm, company: { id: selectedCompanyId ?? 0 } });
     setFormError(null);
     setActionError(null);
     setModalOpen(true);
@@ -206,7 +211,7 @@ export function CollaboratorsSection() {
   }
 
   function clearFilters() {
-    const empty = { code: '', name: '', companyId: '', stateId: '' };
+    const empty = { code: '', name: '', stateId: '' };
     setFilterDraft(empty);
     setFilters(empty);
     setFilterError(null);
@@ -225,12 +230,6 @@ export function CollaboratorsSection() {
         <Field label="Código" value={filterDraft.code} onChange={(event) => setFilterDraft({ ...filterDraft, code: event.target.value })} />
         <Field label="Nombre" value={filterDraft.name} onChange={(event) => setFilterDraft({ ...filterDraft, name: event.target.value })} />
         <SelectField
-          label="Compañía"
-          value={filterDraft.companyId}
-          options={companies.map((item) => ({ value: item.id, label: item.name }))}
-          onChange={(event) => setFilterDraft({ ...filterDraft, companyId: event.target.value })}
-        />
-        <SelectField
           label="Estado"
           value={filterDraft.stateId}
           options={states.map((item) => ({ value: item.id, label: item.name }))}
@@ -243,13 +242,13 @@ export function CollaboratorsSection() {
       </form>
       {filterError && <div className="alert error">{filterError}</div>}
       {actionError && <div className="alert error">{actionError}</div>}
-      {referencesError && <div className="alert error">No se pudieron cargar compañías o estados: {referencesError}</div>}
+      {referencesError && <div className="alert error">No se pudieron cargar los estados: {referencesError}</div>}
       <ManagementTable
         columns={columns}
         emptyMessage="No hay colaboradores para mostrar."
         loading={loading}
         error={error}
-        rows={data}
+        rows={visibleCollaborators}
         rowKey={(item) => item.id}
       />
 
@@ -280,7 +279,7 @@ export function CollaboratorsSection() {
             value={form.company.id || ''}
             options={companies.map((item) => ({ value: item.id, label: item.name }))}
             onChange={(event) => setForm({ ...form, company: { id: Number(event.target.value) } })}
-            disabled={referencesLoading || companies.length === 0}
+            disabled={referencesLoading || companiesLoading || companies.length === 0}
             required
           />
           <SelectField

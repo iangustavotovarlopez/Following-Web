@@ -21,11 +21,13 @@ import { useApiList } from '../../../../shared/hooks/use-api-list';
 import { ManagementTable } from '../../../../shared/components/management-table';
 import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
 import { RowActions } from '../../../../shared/components/row-actions';
+import { useGlobalCompany } from '../../../../app/providers/company-context';
 
 const pagination = { page: 1, pageSize: 100 };
 type ResourceTab = 'companies' | 'branches' | 'technologies';
 
 export function CompaniesSection() {
+  const { selectedCompanyId } = useGlobalCompany();
   const [activeTab, setActiveTab] = useState<ResourceTab>('companies');
   const tabs: { id: ResourceTab; label: string }[] = [
     { id: 'companies', label: 'Companies' },
@@ -58,8 +60,8 @@ export function CompaniesSection() {
       </div>
       <div className="management-tab-content" role="tabpanel">
         {activeTab === 'companies' && <CompaniesTab />}
-        {activeTab === 'branches' && <BranchesTab />}
-        {activeTab === 'technologies' && <TechnologiesTab />}
+        {activeTab === 'branches' && <BranchesTab key={selectedCompanyId ?? 'all'} />}
+        {activeTab === 'technologies' && <TechnologiesTab key={selectedCompanyId ?? 'all'} />}
       </div>
     </section>
   );
@@ -317,9 +319,7 @@ function CompaniesTab() {
 }
 
 function BranchesTab() {
-  const loadCompanies = useCallback(() => companiesApi.listCompanies(pagination), []);
-  const companyList = useApiList(loadCompanies);
-  const [companyId, setCompanyId] = useState<number>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [nameDraft, setNameDraft] = useState('');
   const [nameFilter, setNameFilter] = useState('');
   const load = useCallback(
@@ -409,18 +409,6 @@ function BranchesTab() {
         event.preventDefault();
         setNameFilter(nameDraft.trim());
       }}>
-        <SelectField
-          label="Compañía"
-          value={companyId ?? ''}
-          options={companyList.data.map((company) => ({ value: company.id, label: company.name }))}
-          onChange={(event) => {
-            setCompanyId(event.target.value ? Number(event.target.value) : undefined);
-            setNameDraft('');
-            setNameFilter('');
-          }}
-          disabled={companyList.loading || companyList.data.length === 0}
-          required
-        />
         <Field label="Nombre" value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} />
         <div className="management-filter-actions">
           <button className="button primary" type="submit" disabled={!companyId}>Filtrar</button>
@@ -430,11 +418,10 @@ function BranchesTab() {
           }}>Limpiar</button>
         </div>
       </form>
-      {companyList.error && <div className="alert error">No se pudieron cargar las compañías: {companyList.error}</div>}
       {actionError && <div className="alert error">{actionError}</div>}
       <ManagementTable
         columns={columns}
-        emptyMessage={companyId ? 'No hay branches para mostrar.' : 'Selecciona una compañía para consultar sus branches.'}
+        emptyMessage={companyId ? 'No hay branches para mostrar.' : 'Selecciona una compañía en el selector global para consultar sus branches.'}
         loading={loading}
         error={error}
         rows={data}
@@ -461,9 +448,7 @@ function BranchesTab() {
 }
 
 function TechnologiesTab() {
-  const loadCompanies = useCallback(() => companiesApi.listCompanies(pagination), []);
-  const companyList = useApiList(loadCompanies);
-  const [companyId, setCompanyId] = useState<number>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<number>();
   const loadBranches = useCallback(
     () => companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
@@ -565,19 +550,6 @@ function TechnologiesTab() {
         setFilters({ code: filterDraft.code.trim(), name: filterDraft.name.trim() });
       }}>
         <SelectField
-          label="Compañía"
-          value={companyId ?? ''}
-          options={companyList.data.map((company) => ({ value: company.id, label: company.name }))}
-          onChange={(event) => {
-            setCompanyId(event.target.value ? Number(event.target.value) : undefined);
-            setBranchId(undefined);
-            setFilters({ code: '', name: '' });
-            setFilterDraft({ code: '', name: '' });
-          }}
-          disabled={companyList.loading || companyList.data.length === 0}
-          required
-        />
-        <SelectField
           label="Branch"
           value={branchId ?? ''}
           options={branchList.data.map((branch) => ({ value: branch.id, label: branch.name }))}
@@ -595,14 +567,13 @@ function TechnologiesTab() {
           }}>Limpiar</button>
         </div>
       </form>
-      {companyList.error && <div className="alert error">No se pudieron cargar las compañías: {companyList.error}</div>}
       {branchList.error && <div className="alert error">No se pudieron cargar las branches: {branchList.error}</div>}
       {actionError && <div className="alert error">{actionError}</div>}
       <ManagementTable
         columns={columns}
         emptyMessage={companyId && branchId
           ? 'No hay technologies para mostrar.'
-          : 'Selecciona una compañía y una branch para consultar sus technologies.'}
+          : 'Selecciona una compañía en el selector global y una branch para consultar sus technologies.'}
         loading={loading}
         error={error}
         rows={data}

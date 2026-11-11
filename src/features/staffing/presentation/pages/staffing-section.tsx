@@ -24,6 +24,7 @@ import {
   type StaffingQuery,
   type StaffingState,
 } from '../../infrastructure/api/staffing-api';
+import { useGlobalCompany } from '../../../../app/providers/company-context';
 
 const pagination = { page: 1, pageSize: 100 };
 
@@ -132,6 +133,7 @@ function referenceId(value: string) {
 }
 
 export function StaffingSection() {
+  const { selectedCompanyId } = useGlobalCompany();
   const [filterForm, setFilterForm] = useState<StaffingFilterForm>(emptyStaffingFilters);
   const [filters, setFilters] = useState<StaffingFilterForm>(emptyStaffingFilters);
   const loadStaffing = useCallback(() => {
@@ -148,7 +150,10 @@ export function StaffingSection() {
     return staffingApi.listStaffing(query);
   }, [filters]);
   const staffing = useApiList(loadStaffing);
-  const loadProjects = useCallback(() => projectsApi.listProjects(pagination), []);
+  const loadProjects = useCallback(
+    () => projectsApi.listProjects({ ...pagination, 'company.id': selectedCompanyId }),
+    [selectedCompanyId],
+  );
   const projects = useApiList(loadProjects);
   const action = useApiAction<Staffing>();
   const [form, setForm] = useState<StaffingFormState>(newStaffingForm);
@@ -158,6 +163,14 @@ export function StaffingSection() {
     () => staffingApi.listStates({ ...pagination }),
   );
   const activeStaffingStates = staffingStates.items.filter((state) => state.isActive);
+  const projectIds = new Set(
+    projects.data
+      .filter((project) => project.company.id === selectedCompanyId)
+      .map((project) => project.id),
+  );
+  const staffingRows = selectedCompanyId
+    ? staffing.data.filter((item) => projectIds.has(item.project.id))
+    : staffing.data;
 
   const selectedProject = projects.data.find((project) => String(project.id) === form.projectId);
   const companyId = selectedProject?.company.id;
@@ -165,6 +178,12 @@ export function StaffingSection() {
   const subperiodId = referenceId(form.subperiodId);
   const sectionId = referenceId(form.sectionId);
   const branchId = referenceId(form.branchId);
+
+  useEffect(() => {
+    setForm(newStaffingForm());
+    setFilterForm(emptyStaffingFilters);
+    setFilters(emptyStaffingFilters);
+  }, [selectedCompanyId]);
 
   const periods = useCatalog<Period>(
     `staffing-periods:${companyId}`,
@@ -323,13 +342,13 @@ export function StaffingSection() {
       {staffing.error && <div className="alert error">{staffing.error}</div>}
       {staffing.loading ? (
         <div className="empty-state">Consultando API...</div>
-      ) : staffing.data.length === 0 ? (
+      ) : staffingRows.length === 0 ? (
         <div className="empty-state">No hay solicitudes de staffing para mostrar.</div>
       ) : (
         <div className="table-container">
           <table>
             <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
-            <tbody>{staffing.data.map((item) => (
+            <tbody>{staffingRows.map((item) => (
               <tr key={item.id}>{columns.map((column) => <td key={column.key}>{column.render(item)}</td>)}</tr>
             ))}</tbody>
           </table>

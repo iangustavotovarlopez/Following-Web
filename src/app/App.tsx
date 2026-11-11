@@ -11,6 +11,7 @@ import { AdvancedRelationshipsManagement } from '../features/relations/presentat
 import { StaffingSection } from '../features/staffing/presentation/pages/staffing-section';
 import { ApiResponseExport } from '../shared/components/api-response-export';
 import { PeopleSection } from './people-section';
+import { CompanyProvider, GlobalCompanySelector } from './providers/company-context';
 
 export function App() {
   const searchParams = new URLSearchParams(window.location.search);
@@ -41,31 +42,34 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="eyebrow">Following Web</p>
-          <h1>Panel de operación</h1>
-          <p className="header-description">
-            Consulta y registra información mediante la API de Following.
-          </p>
-        </div>
-        <div className="app-header-actions">
-          <ApiResponseExport />
-          <span className="connection-status">API local</span>
-        </div>
-      </header>
+    <CompanyProvider>
+      <div className="app-shell">
+        <header className="app-header">
+          <div>
+            <p className="eyebrow">Following Web</p>
+            <h1>Panel de operación</h1>
+            <p className="header-description">
+              Consulta y registra información mediante la API de Following.
+            </p>
+          </div>
+          <div className="app-header-actions">
+            <GlobalCompanySelector />
+            <ApiResponseExport />
+            <span className="connection-status">API local</span>
+          </div>
+        </header>
 
-      <main className="dashboard">
-        <CompaniesSection />
-        <PeopleSection />
-        <ProjectsSection />
-        <StaffingSection />
-        <ServicesSection />
-        <PlanningSection />
-        <AdditionalCatalogsSection />
-        <AdvancedRelationshipsManagement />
-      </main>
-    </div>
+        <main className="dashboard">
+          <CompaniesSection />
+          <PeopleSection />
+          <ProjectsSection />
+          <StaffingSection />
+          <ServicesSection />
+          <PlanningSection />
+          <AdditionalCatalogsSection />
+          <AdvancedRelationshipsManagement />
+        </main>
+      </div>
+    </CompanyProvider>
   );
 }

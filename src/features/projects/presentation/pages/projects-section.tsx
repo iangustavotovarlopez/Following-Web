@@ -11,22 +11,29 @@ import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
-import { companiesApi, type Company } from '../../../companies/infrastructure/api';
+import { useGlobalCompany } from '../../../../app/providers/company-context';
 
-const initialForm: CreateProjectRequest = {
+const initialForm = (companyId?: number): CreateProjectRequest => ({
   code: '',
   name: '',
-  company: { id: 1 },
+  company: { id: companyId ?? 0 },
   state: { id: 1 },
-};
+});
 
 export function ProjectsSection() {
+  const { companies, selectedCompanyId } = useGlobalCompany();
   const load = useCallback(
-    () => projectsApi.listProjects({ page: 1, pageSize: 20 }),
-    [],
+    () => projectsApi.listProjects({
+      page: 1,
+      pageSize: 20,
+      'company.id': selectedCompanyId,
+    }),
+    [selectedCompanyId],
   );
   const { data, loading, error, refresh } = useApiList(load);
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const visibleProjects = selectedCompanyId
+    ? data.filter((project) => project.company.id === selectedCompanyId)
+    : data;
   const [states, setStates] = useState<ProjectState[]>([]);
   const [newStateName, setNewStateName] = useState('');
   const [editingStateId, setEditingStateId] = useState(0);
@@ -64,19 +71,21 @@ export function ProjectsSection() {
       ),
     },
   ];
-  const [form, setForm] = useState<CreateProjectRequest>(initialForm);
+  const [form, setForm] = useState<CreateProjectRequest>(() => initialForm(selectedCompanyId));
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      companiesApi.listCompanies({ page: 1, pageSize: 100 }),
-      projectsApi.listStates({ page: 1, pageSize: 100 }),
-    ]).then(([companyResponse, stateResponse]) => {
-      setCompanies(companyResponse?.content ?? []);
+    projectsApi.listStates({ page: 1, pageSize: 100 }).then((stateResponse) => {
       setStates(stateResponse?.content ?? []);
     });
   }, []);
+
+  useEffect(() => {
+    setForm((current) => ({ ...current, company: { id: selectedCompanyId ?? 0 } }));
+    setEditingProjectId(0);
+    setEditingProject({});
+  }, [selectedCompanyId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -84,7 +93,7 @@ export function ProjectsSection() {
     setFormError(null);
     try {
       await projectsApi.createProject(form);
-      setForm(initialForm);
+      setForm(initialForm(selectedCompanyId));
       refresh();
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'No se pudo guardar');
@@ -135,7 +144,7 @@ export function ProjectsSection() {
       <form className="inline-form" onSubmit={submit}>
         <Field label="Código" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
         <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        <SelectField label="Compañía" value={form.company.id} options={companies.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, company: { id: Number(e.target.value) } })} required />
+        <SelectField label="Compañía" value={form.company.id || ''} options={companies.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, company: { id: Number(e.target.value) } })} required />
         <SelectField label="Estado" value={form.state.id} options={states.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => setForm({ ...form, state: { id: Number(e.target.value) } })} required />
         <SubmitButton loading={saving}>Crear proyecto</SubmitButton>
       </form>
@@ -155,9 +164,9 @@ export function ProjectsSection() {
         <SubmitButton>Actualizar estado</SubmitButton>
       </form>
       <form className="inline-form" onSubmit={submitProjectPatch}>
-        <SelectField label="Editar proyecto" value={editingProjectId || ''} options={data.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
+        <SelectField label="Editar proyecto" value={editingProjectId || ''} options={visibleProjects.map((item) => ({ value: item.id, label: item.name }))} onChange={(e) => {
           const id = Number(e.target.value);
-          const project = data.find((item) => item.id === id);
+          const project = visibleProjects.find((item) => item.id === id);
           setEditingProjectId(id);
           setEditingProject(project ? { code: project.code, name: project.name, company: { id: project.company.id }, state: { id: project.state.id } } : {});
         }} required />
@@ -176,7 +185,7 @@ export function ProjectsSection() {
       title="Projects"
       description="Consulta y alta de proyectos."
       columns={columns}
-      rows={data}
+      rows={visibleProjects}
       loading={loading}
       error={error}
       form={formView}

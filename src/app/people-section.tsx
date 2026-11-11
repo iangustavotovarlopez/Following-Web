@@ -1,19 +1,14 @@
-import { useCallback, useState } from 'react';
-import { companiesApi, type Company } from '../features/companies/infrastructure/api';
+import { useState } from 'react';
 import { TeamsSection } from '../features/companies/presentation/pages/nested-resource-management';
 import { CollaboratorRoleAssignmentsSection } from '../features/collaborators/presentation/pages/collaborator-role-assignments-section';
 import { CollaboratorRolesSection } from '../features/collaborators/presentation/pages/collaborator-roles-section';
 import { CollaboratorsSection } from '../features/collaborators/presentation/pages/collaborators-section';
-import { useApiList } from '../shared/hooks/use-api-list';
+import { useGlobalCompany } from './providers/company-context';
 
 export function PeopleSection() {
+  const { selectedCompanyId } = useGlobalCompany();
   const [activeTab, setActiveTab] = useState('collaborators');
   const [teamRevision, setTeamRevision] = useState(0);
-  const loadCompanies = useCallback(
-    () => companiesApi.listCompanies({ page: 1, pageSize: 100 }),
-    [],
-  );
-  const { data: companies } = useApiList<Company>(loadCompanies);
   const tabs = [
     { id: 'collaborators', label: 'Collaborators' },
     { id: 'roles', label: 'Roles' },
@@ -53,7 +48,7 @@ export function PeopleSection() {
         )}
         {activeTab === 'teams' && (
           <TeamsSection
-            companies={companies}
+            key={selectedCompanyId ?? 'all'}
             revision={teamRevision}
             onSaved={() => setTeamRevision((revision) => revision + 1)}
           />

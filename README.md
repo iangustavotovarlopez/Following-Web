@@ -49,6 +49,14 @@ periodo, subperiodo, sección, fracción, especialidad y estado. La vista de
 detalle de proyecto consume las fechas que devuelve la API dentro de la
 planeación, sin volver a consultar cada catálogo de periodos y secciones.
 
+El panel incluye un selector global de compañía en la parte superior. Al elegir
+una compañía, las consultas de colaboradores, proyectos, staffing, branches,
+technologies, planeación, especialidades, skills, equipos y relaciones usan esa
+compañía. Si no se selecciona una, los listados que admiten consulta global
+muestran todas; los catálogos anidados esperan una compañía. Los campos de
+compañía en formularios de alta/edición siguen permitiendo asignar o cambiar la
+relación del registro.
+
 ## Estándar de catálogos
 
 Las secciones de administración de catálogos siguen el patrón de Companies:

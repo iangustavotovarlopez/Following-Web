@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   companiesApi,
-  type Company,
   type Period,
   type Skill,
   type SkillLevel,
@@ -27,6 +26,7 @@ import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { API_MUTATION_EVENT, type ApiMutationDetail } from '../../../../shared/api';
 import { useApiAction } from '../../../../shared/hooks/use-api-action';
+import { useGlobalCompany } from '../../../../app/providers/company-context';
 
 type Id = number | undefined;
 type CatalogResult<T> = { items: T[]; loading: boolean; error: string | null };
@@ -100,7 +100,7 @@ function BaseForm({ children, onSubmit }: { children: ReactNode; onSubmit: (even
 }
 
 export function AdvancedRelationshipsManagement() {
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const { selectedCompanyId } = useGlobalCompany();
   const [projects, setProjects] = useState<Project[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [metadata, setMetadata] = useState<ServiceMetadata[]>([]);
@@ -110,15 +110,15 @@ export function AdvancedRelationshipsManagement() {
 
   useEffect(() => {
     let active = true;
+    setProjects([]);
+    setCatalogError(null);
     Promise.all([
-      companiesApi.listCompanies(pagination),
-      projectsApi.listProjects(pagination),
+      projectsApi.listProjects({ ...pagination, 'company.id': selectedCompanyId }),
       servicesApi.listEnvironments(pagination),
       servicesApi.listMetadata(pagination),
     ])
-      .then(([companyResponse, projectResponse, environmentResponse, metadataResponse]) => {
+      .then(([projectResponse, environmentResponse, metadataResponse]) => {
         if (!active) return;
-        setCompanies(companyResponse?.content ?? []);
         setProjects(projectResponse?.content ?? []);
         setEnvironments(environmentResponse?.content ?? []);
         setMetadata(metadataResponse?.content ?? []);
@@ -127,7 +127,7 @@ export function AdvancedRelationshipsManagement() {
         if (active) setCatalogError(cause instanceof Error ? cause.message : 'No se pudieron cargar los catálogos');
       });
     return () => { active = false; };
-  }, []);
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     function handleMutation(event: Event) {
@@ -145,22 +145,26 @@ export function AdvancedRelationshipsManagement() {
   return (
     <div className="resource-grid">
       {catalogError && <div className="alert error">{catalogError}</div>}
-      <CollaboratorTechnologySection companies={companies} collaboratorRevision={collaboratorRevision} />
-      <CollaboratorSkillLevelSection companies={companies} collaboratorRevision={collaboratorRevision} />
-      <CreatePlanningSection projects={projects} onCreated={refreshPlannings} />
-      <PlanningPeriodSection projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
-      <PlanningSectionAssignment projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
+      {!selectedCompanyId && (
+        <div className="company-scope-hint">
+          Selecciona una compañía en el selector global para usar las relaciones de colaboradores.
+        </div>
+      )}
+      <CollaboratorTechnologySection key={`technology:${selectedCompanyId ?? 'all'}`} collaboratorRevision={collaboratorRevision} />
+      <CollaboratorSkillLevelSection key={`skill-level:${selectedCompanyId ?? 'all'}`} collaboratorRevision={collaboratorRevision} />
+      <CreatePlanningSection key={`create-planning:${selectedCompanyId ?? 'all'}`} projects={projects} onCreated={refreshPlannings} />
+      <PlanningPeriodSection key={`planning-period:${selectedCompanyId ?? 'all'}`} projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
+      <PlanningSectionAssignment key={`planning-section:${selectedCompanyId ?? 'all'}`} projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
       <ServiceEnvironmentSection environments={environments} />
       <ServiceMetadataSection metadata={metadata} />
     </div>
   );
 }
 
-function CollaboratorTechnologySection({ companies, collaboratorRevision }: {
-  companies: Company[];
+function CollaboratorTechnologySection({ collaboratorRevision }: {
   collaboratorRevision: number;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const [technologyId, setTechnologyId] = useState<Id>();
   const [collaboratorId, setCollaboratorId] = useState<Id>();
@@ -185,12 +189,6 @@ function CollaboratorTechnologySection({ companies, collaboratorRevision }: {
   return (
     <RelationSection title="Asignar tecnología" description="Asocia una tecnología existente a un colaborador.">
       <BaseForm onSubmit={submit}>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-          setTechnologyId(undefined);
-          setCollaboratorId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches.items, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setTechnologyId(undefined);
@@ -207,11 +205,10 @@ function CollaboratorTechnologySection({ companies, collaboratorRevision }: {
   );
 }
 
-function CollaboratorSkillLevelSection({ companies, collaboratorRevision }: {
-  companies: Company[];
+function CollaboratorSkillLevelSection({ collaboratorRevision }: {
   collaboratorRevision: number;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const [technologyId, setTechnologyId] = useState<Id>();
   const [collaboratorId, setCollaboratorId] = useState<Id>();
@@ -244,14 +241,6 @@ function CollaboratorSkillLevelSection({ companies, collaboratorRevision }: {
   return (
     <RelationSection title="Asignar nivel de habilidad" description="Actualiza el nivel de una habilidad para un colaborador y una tecnología.">
       <BaseForm onSubmit={submit}>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-          setTechnologyId(undefined);
-          setSkillId(undefined);
-          setLevelId(undefined);
-          setCollaboratorId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches.items, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setTechnologyId(undefined);

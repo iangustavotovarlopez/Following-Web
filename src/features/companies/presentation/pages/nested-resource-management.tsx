@@ -27,9 +27,9 @@ import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiAction } from '../../../../shared/hooks/use-api-action';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
+import { useGlobalCompany } from '../../../../app/providers/company-context';
 import {
   companiesApi,
-  type Company,
   type Deliverable,
   type DeliverablePatchRequest,
   type Fraction,
@@ -149,7 +149,7 @@ function ManagedResourceSection<T, Form>({
 }
 
 export function PlanningSection() {
-  const companies = useOptions('planning-companies', () => companiesApi.listCompanies(pagination));
+  const { selectedCompanyId } = useGlobalCompany();
   const [catalogRevision, setCatalogRevision] = useState(0);
   const [activeTab, setActiveTab] = useState('periods');
   const refreshCatalogs = () => setCatalogRevision((revision) => revision + 1);
@@ -184,17 +184,22 @@ export function PlanningSection() {
         ))}
       </div>
       <div className="management-tab-content" role="tabpanel">
+        {!selectedCompanyId && (
+          <div className="company-scope-hint">
+            Selecciona una compañía en el selector global para consultar sus catálogos de planeación.
+          </div>
+        )}
         {activeTab === 'periods' && (
-          <PeriodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+          <PeriodsSection key={selectedCompanyId ?? 'all'} revision={catalogRevision} onSaved={refreshCatalogs} />
         )}
         {activeTab === 'subperiods' && (
-          <SubperiodsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+          <SubperiodsSection key={selectedCompanyId ?? 'all'} revision={catalogRevision} onSaved={refreshCatalogs} />
         )}
         {activeTab === 'sections' && (
-          <SectionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+          <SectionsSection key={selectedCompanyId ?? 'all'} revision={catalogRevision} onSaved={refreshCatalogs} />
         )}
         {activeTab === 'fractions' && (
-          <FractionsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+          <FractionsSection key={selectedCompanyId ?? 'all'} revision={catalogRevision} onSaved={refreshCatalogs} />
         )}
       </div>
     </section>
@@ -202,7 +207,7 @@ export function PlanningSection() {
 }
 
 export function AdditionalCatalogsSection() {
-  const companies = useOptions('companies', () => companiesApi.listCompanies(pagination));
+  const { selectedCompanyId } = useGlobalCompany();
   const [catalogRevision, setCatalogRevision] = useState(0);
   const refreshCatalogs = () => setCatalogRevision((revision) => revision + 1);
 
@@ -215,13 +220,18 @@ export function AdditionalCatalogsSection() {
           <p className="muted">Administra especialidades, skills, entregables y miembros de equipos.</p>
         </div>
       </div>
+      {!selectedCompanyId && (
+        <div className="company-scope-hint">
+          Selecciona una compañía en el selector global para consultar sus catálogos asociados.
+        </div>
+      )}
       <div className="resource-grid additional-catalog-grid">
-        <SpecialitiesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-        <SkillsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-        <SkillLevelsSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
-        <DeliverablesSection companies={companies} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <SpecialitiesSection key={`specialities:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <SkillsSection key={`skills:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <SkillLevelsSection key={`levels:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
+        <DeliverablesSection key={`deliverables:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <TeamMembersSection
-          companies={companies}
+          key={`members:${selectedCompanyId ?? 'all'}`}
           revision={catalogRevision}
           onSaved={refreshCatalogs}
         />
@@ -230,12 +240,11 @@ export function AdditionalCatalogsSection() {
   );
 }
 
-function PeriodsSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function PeriodsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [filters, setFilters] = useState<CatalogFilterValues>({});
   const load = useScopedList(`periods:${companyId}:${revision}:${JSON.stringify(filters)}`, () =>
     companyId ? companiesApi.listPeriods(companyId, { ...pagination, ...filters }) : Promise.resolve(null),
@@ -261,9 +270,6 @@ function PeriodsSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-        }} required />
         <CatalogFilters onApply={setFilters} />
       </>}
       initialForm={{ name: '', code: '', startDate: '', endDate: '' }}
@@ -323,12 +329,11 @@ function PeriodUpdateForm({ companyId, periods, onSaved }: {
   );
 }
 
-function SubperiodsSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function SubperiodsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [periodId, setPeriodId] = useState<Id>();
   const [filters, setFilters] = useState<CatalogFilterValues>({});
   const periods = useOptions(`subperiod-periods:${companyId}:${revision}`, () =>
@@ -355,10 +360,6 @@ function SubperiodsSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && periodId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setPeriodId(undefined);
-        }} required />
         <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(event) => setPeriodId(idOf(event.target.value))} disabled={!companyId} required />
         <CatalogFilters onApply={setFilters} />
       </>}
@@ -375,12 +376,11 @@ function SubperiodsSection({ companies, revision, onSaved }: {
   );
 }
 
-function SpecialitiesSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function SpecialitiesSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const branches = useOptions(`speciality-branches:${companyId}:${revision}`, () =>
     companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
@@ -405,10 +405,6 @@ function SpecialitiesSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && branchId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => setBranchId(idOf(event.target.value))} disabled={!companyId} required />
       </>}
       initialForm={{ code: '', name: '', description: '' }}
@@ -423,12 +419,11 @@ function SpecialitiesSection({ companies, revision, onSaved }: {
   );
 }
 
-function SectionsSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function SectionsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [periodId, setPeriodId] = useState<Id>();
   const [subperiodId, setSubperiodId] = useState<Id>();
   const [filters, setFilters] = useState<CatalogFilterValues>({});
@@ -458,11 +453,6 @@ function SectionsSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && periodId && subperiodId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setPeriodId(undefined);
-          setSubperiodId(undefined);
-        }} required />
         <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(event) => {
           setPeriodId(idOf(event.target.value));
           setSubperiodId(undefined);
@@ -483,12 +473,11 @@ function SectionsSection({ companies, revision, onSaved }: {
   );
 }
 
-function FractionsSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function FractionsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [periodId, setPeriodId] = useState<Id>();
   const [subperiodId, setSubperiodId] = useState<Id>();
   const [sectionId, setSectionId] = useState<Id>();
@@ -522,12 +511,6 @@ function FractionsSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && periodId && subperiodId && sectionId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setPeriodId(undefined);
-          setSubperiodId(undefined);
-          setSectionId(undefined);
-        }} required />
         <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods, (item) => item.name)} onChange={(event) => {
           setPeriodId(idOf(event.target.value));
           setSubperiodId(undefined);
@@ -553,12 +536,11 @@ function FractionsSection({ companies, revision, onSaved }: {
   );
 }
 
-function SkillsSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function SkillsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const [technologyId, setTechnologyId] = useState<Id>();
   const branches = useOptions(`skill-branches:${companyId}:${revision}`, () =>
@@ -585,11 +567,6 @@ function SkillsSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && branchId && technologyId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-          setTechnologyId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setTechnologyId(undefined);
@@ -607,12 +584,11 @@ function SkillsSection({ companies, revision, onSaved }: {
   );
 }
 
-function SkillLevelsSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function SkillLevelsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const [technologyId, setTechnologyId] = useState<Id>();
   const [skillId, setSkillId] = useState<Id>();
@@ -643,12 +619,6 @@ function SkillLevelsSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && branchId && technologyId && skillId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-          setTechnologyId(undefined);
-          setSkillId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setTechnologyId(undefined);
@@ -671,12 +641,11 @@ function SkillLevelsSection({ companies, revision, onSaved }: {
   );
 }
 
-export function TeamsSection({ companies, revision, onSaved }: {
-  companies: Company[];
+export function TeamsSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const [specialityId, setSpecialityId] = useState<Id>();
   const [filters, setFilters] = useState<CatalogFilterValues>({});
@@ -769,11 +738,6 @@ export function TeamsSection({ companies, revision, onSaved }: {
         </button>
       </div>
       <div className="management-filters">
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-          setSpecialityId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setSpecialityId(undefined);
@@ -786,7 +750,7 @@ export function TeamsSection({ companies, revision, onSaved }: {
         columns={columns}
         emptyMessage={companyId && branchId && specialityId
           ? 'No hay equipos para mostrar.'
-          : 'Selecciona compañía, branch y especialidad para consultar los equipos.'}
+          : 'Selecciona una compañía en el selector global, una branch y una especialidad para consultar los equipos.'}
         loading={load.loading}
         error={load.error}
         rows={load.data}
@@ -819,12 +783,11 @@ export function TeamsSection({ companies, revision, onSaved }: {
   );
 }
 
-function DeliverablesSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function DeliverablesSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const [technologyId, setTechnologyId] = useState<Id>();
   const branches = useOptions(`deliverable-branches:${companyId}:${revision}`, () =>
@@ -852,11 +815,6 @@ function DeliverablesSection({ companies, revision, onSaved }: {
       error={load.error}
       enabled={Boolean(companyId && branchId && technologyId)}
       filterFields={<>
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-          setTechnologyId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setTechnologyId(undefined);
@@ -916,12 +874,11 @@ function DeliverableUpdateForm({ companyId, branchId, technologyId, deliverables
   );
 }
 
-function TeamMembersSection({ companies, revision, onSaved }: {
-  companies: Company[];
+function TeamMembersSection({ revision, onSaved }: {
   revision: number;
   onSaved: () => void;
 }) {
-  const [companyId, setCompanyId] = useState<Id>();
+  const { selectedCompanyId: companyId } = useGlobalCompany();
   const [branchId, setBranchId] = useState<Id>();
   const [specialityId, setSpecialityId] = useState<Id>();
   const [teamId, setTeamId] = useState<Id>();
@@ -982,12 +939,6 @@ function TeamMembersSection({ companies, revision, onSaved }: {
   const formView = (
     <form className="form-stack" onSubmit={submit}>
       <div className="inline-form">
-        <SelectField label="Compañía" value={companyId ?? ''} options={optionsOf(companies, (item) => item.name)} onChange={(event) => {
-          setCompanyId(idOf(event.target.value));
-          setBranchId(undefined);
-          setSpecialityId(undefined);
-          setTeamId(undefined);
-        }} required />
         <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => {
           setBranchId(idOf(event.target.value));
           setSpecialityId(undefined);

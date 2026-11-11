@@ -8,14 +8,22 @@ export interface SelectOption {
 interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
   options: SelectOption[];
+  emptyLabel?: string;
+  containerClassName?: string;
 }
 
-export function SelectField({ label, options, ...props }: SelectFieldProps) {
+export function SelectField({
+  label,
+  options,
+  emptyLabel = 'Selecciona una opción',
+  containerClassName,
+  ...props
+}: SelectFieldProps) {
   return (
-    <label className="field">
+    <label className={`field ${containerClassName ?? ''}`}>
       <span>{label}</span>
       <select {...props}>
-        <option value="">Selecciona una opción</option>
+        <option value="">{emptyLabel}</option>
         {options.map((option) => (
           <option key={String(option.value)} value={option.value}>
             {option.label}

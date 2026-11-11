@@ -89,6 +89,42 @@ button {
   gap: 8px;
 }
 
+.global-company-selector {
+  display: grid;
+  gap: 4px;
+  min-width: min(240px, 30vw);
+}
+
+.global-company-field {
+  min-width: 0;
+  color: #ffffff;
+}
+
+.global-company-field select {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.global-company-field select option {
+  color: #172033;
+  background: #ffffff;
+}
+
+.global-company-error {
+  color: #ffd1d5;
+  font-size: 0.72rem;
+}
+
+.company-scope-hint {
+  margin: 16px 24px 0;
+  border-left: 3px solid #78b9ad;
+  padding: 8px 12px;
+  color: #526673;
+  background: #f0f8f7;
+  font-size: 0.82rem;
+}
+
 .api-response-export-floating {
   position: fixed;
   top: 12px;
@@ -1182,6 +1218,15 @@ tbody tr:last-child td {
     flex-direction: column;
   }
 
+  .app-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .global-company-selector {
+    min-width: min(100%, 300px);
+  }
+
   .inline-form {
     justify-content: flex-start;
     min-width: 0;
@@ -1203,6 +1248,10 @@ tbody tr:last-child td {
 
   .section-heading {
     padding: 18px;
+  }
+
+  .global-company-selector {
+    width: 100%;
   }
 
   .management-tabs {
