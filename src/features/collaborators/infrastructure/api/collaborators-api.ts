@@ -81,6 +81,7 @@ export interface CollaboratorSpeciality {
     id: number;
     name: string;
     isActive: boolean;
+    branch?: { id: number; name: string } | null;
   };
   isActive: boolean;
 }
@@ -94,7 +95,13 @@ export interface CollaboratorSpecialitySkill {
 
 export interface CollaboratorTechnology {
   id: number;
-  technology: { id: number };
+  technology: {
+    id: number;
+    code: string;
+    name: string;
+    isActive: boolean;
+    branch?: { id: number; name: string } | null;
+  };
   isActive: boolean;
 }
 

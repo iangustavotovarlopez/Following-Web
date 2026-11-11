@@ -37,15 +37,17 @@ export function ModalActions({
   onCancel,
   saving,
   submitLabel,
+  submitDisabled,
 }: {
   onCancel: () => void;
   saving: boolean;
   submitLabel: string;
+  submitDisabled?: boolean;
 }) {
   return (
     <div className="modal-actions">
       <button className="button secondary" onClick={onCancel} type="button">Cancelar</button>
-      <SubmitButton loading={saving}>{submitLabel}</SubmitButton>
+      <SubmitButton loading={saving} disabled={submitDisabled}>{submitLabel}</SubmitButton>
     </div>
   );
 }

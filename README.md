@@ -49,13 +49,39 @@ periodo, subperiodo, sección, fracción, especialidad y estado. La vista de
 detalle de proyecto consume las fechas que devuelve la API dentro de la
 planeación, sin volver a consultar cada catálogo de periodos y secciones.
 
-El panel incluye un selector global de compañía en la parte superior. Al elegir
+El panel incluye un selector global de compañía en una barra superior que
+permanece visible al hacer scroll, también en pantallas pequeñas. Al elegir
 una compañía, las consultas de colaboradores, proyectos, staffing, branches,
 technologies, planeación, especialidades, skills, equipos y relaciones usan esa
 compañía. Si no se selecciona una, los listados que admiten consulta global
 muestran todas; los catálogos anidados esperan una compañía. Los campos de
 compañía en formularios de alta/edición siguen permitiendo asignar o cambiar la
 relación del registro.
+
+En Collaborators, el icono de tabla en la columna de acciones permite desplegar
+y contraer los roles, especialidades y tecnologías debajo de la misma fila.
+Las tablas anidadas consultan la API al abrirse, muestran estados de carga,
+errores y relaciones vacías, y no abren otra ventana. Cambiar la compañía o
+aplicar filtros cierra los detalles desplegados.
+
+Cada tabla de detalle incluye **Añadir**, que abre un modal para asignar un rol,
+una especialidad o una tecnología al colaborador de esa fila. El modal muestra
+opciones activas no asignadas; especialidades y tecnologías se consultan por
+branch dentro de la compañía del colaborador. Al guardar se actualizan las
+tablas sin cerrar la fila. Los colaboradores inactivos no permiten nuevas
+asignaciones desde este flujo.
+
+Las consultas paginadas de los modales interpretan `204 No Content` como un
+catálogo vacío, no como un error. La tabla de tecnologías usa el código y nombre
+incluidos en la respuesta de relaciones del colaborador, sin consultar los
+catálogos de todas las branches. Los errores reales de la API siguen mostrándose.
+
+Las tablas anidadas de especialidades y tecnologías muestran **Branch** como
+primera columna. El nombre proviene de `speciality.branch` o `technology.branch`
+en la respuesta de la API, sin consultas adicionales de catálogos.
+Si la API desplegada todavía no incluye la branch, el detalle sigue mostrándose:
+la celda indica `No informado` y un aviso explica que se deben actualizar el
+backend y las rutinas V1. Este aviso no bloquea las asignaciones.
 
 ## Estándar de catálogos
 

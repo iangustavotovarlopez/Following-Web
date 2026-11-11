@@ -14,6 +14,7 @@ import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
 import { useApiList } from '../../../../shared/hooks/use-api-list';
 import { useGlobalCompany } from '../../../../app/providers/company-context';
+import { CollaboratorDetailsPage } from './collaborator-details-page';
 
 const initialForm: CreateCollaboratorRequest = {
   code: '',
@@ -70,6 +71,20 @@ export function CollaboratorsSection() {
   const [stateName, setStateName] = useState('');
   const [stateSaving, setStateSaving] = useState(false);
   const [stateError, setStateError] = useState<string | null>(null);
+  const [expandedCollaborators, setExpandedCollaborators] = useState<Set<number>>(() => new Set());
+
+  useEffect(() => {
+    setExpandedCollaborators(new Set());
+  }, [selectedCompanyId, filters]);
+
+  function toggleDetails(collaboratorId: number) {
+    setExpandedCollaborators((current) => {
+      const next = new Set(current);
+      if (next.has(collaboratorId)) next.delete(collaboratorId);
+      else next.add(collaboratorId);
+      return next;
+    });
+  }
 
   useEffect(() => {
     let active = true;
@@ -101,20 +116,29 @@ export function CollaboratorsSection() {
     {
       key: 'actions',
       label: 'Acciones',
-      render: (item) => <>
+      render: (item) => (
         <RowActions
+          className="collaborator-row-actions"
           onEdit={() => openModal(item)}
           onDelete={() => void deleteCollaborator(item)}
-        />
-        <a
-          className="button primary details-link"
-          href={`/?collaboratorId=${item.id}&collaboratorCode=${encodeURIComponent(item.code)}`}
-          target="_blank"
-          rel="noreferrer"
         >
-          Ver detalles
-        </a>
-      </>,
+          <button
+            aria-label={`${expandedCollaborators.has(item.id) ? 'Ocultar' : 'Mostrar'} detalles de ${fullName(item)}`}
+            aria-expanded={expandedCollaborators.has(item.id)}
+            aria-controls={expandedCollaborators.has(item.id) ? `collaborator-details-${item.id}` : undefined}
+            className="row-action-button details"
+            onClick={() => toggleDetails(item.id)}
+            title={expandedCollaborators.has(item.id) ? 'Ocultar detalles' : 'Mostrar roles, especialidades y tecnologías'}
+            type="button"
+          >
+            <svg aria-hidden="true" fill="none" focusable="false" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 9v12" />
+              <path d={expandedCollaborators.has(item.id) ? 'm12 16 3-3 3 3' : 'm12 14 3 3 3-3'} />
+            </svg>
+          </button>
+        </RowActions>
+      ),
     },
   ];
 
@@ -250,6 +274,15 @@ export function CollaboratorsSection() {
         error={error}
         rows={visibleCollaborators}
         rowKey={(item) => item.id}
+        renderExpandedRow={(item) => expandedCollaborators.has(item.id) ? (
+          <div id={`collaborator-details-${item.id}`}>
+            <CollaboratorDetailsPage
+              collaboratorId={item.id}
+              collaboratorCode={item.code}
+              inlineCollaborator={item}
+            />
+          </div>
+        ) : null}
       />
 
       <details className="state-catalog-tools">

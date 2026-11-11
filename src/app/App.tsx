@@ -53,11 +53,14 @@ export function App() {
             </p>
           </div>
           <div className="app-header-actions">
-            <GlobalCompanySelector />
             <ApiResponseExport />
             <span className="connection-status">API local</span>
           </div>
         </header>
+
+        <div className="global-company-toolbar">
+          <GlobalCompanySelector />
+        </div>
 
         <main className="dashboard">
           <CompaniesSection />

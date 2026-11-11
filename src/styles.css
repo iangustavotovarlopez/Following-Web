@@ -89,6 +89,17 @@ button {
   gap: 8px;
 }
 
+.global-company-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px clamp(20px, 5vw, 80px);
+  background: #284567;
+  box-shadow: 0 4px 12px rgba(15, 25, 40, 0.16);
+}
+
 .global-company-selector {
   display: grid;
   gap: 4px;
@@ -588,6 +599,68 @@ button {
   border-color: #f0dfaa;
   color: #b77900;
   background: #fff8df;
+}
+
+.row-action-button.details {
+  border-color: #b5d8dc;
+  color: #267c88;
+  background: #edf7f8;
+}
+
+.collaborator-row-actions {
+  flex-wrap: nowrap;
+}
+
+.row-action-button.details:hover,
+.row-action-button.details[aria-expanded="true"] {
+  border-color: #267c88;
+  background: #d9eef0;
+}
+
+.management-expanded-row > td {
+  padding: 16px 24px;
+  white-space: normal;
+  background: #f3f8fa;
+}
+
+.collaborator-detail-tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+
+.collaborator-inline-details .resource-section {
+  min-width: 0;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.collaborator-inline-details .section-heading {
+  padding: 16px;
+  flex-direction: row;
+}
+
+.collaborator-add-button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+}
+
+.collaborator-inline-details h2 {
+  font-size: 1rem;
+}
+
+.collaborator-inline-details .section-heading .muted {
+  font-size: 0.8rem;
+}
+
+.collaborator-inline-details th,
+.collaborator-inline-details td {
+  padding: 10px 16px;
+}
+
+.collaborator-inline-details .empty-state {
+  padding: 20px 16px;
 }
 
 .row-action-button.edit:hover {
@@ -1238,6 +1311,11 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 560px) {
+  .global-company-toolbar {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
   .app-header {
     padding: 28px 18px;
   }

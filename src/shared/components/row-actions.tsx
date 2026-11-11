@@ -1,6 +1,13 @@
-export function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+import type { ReactNode } from 'react';
+
+export function RowActions({ onEdit, onDelete, children, className }: {
+  onEdit: () => void;
+  onDelete: () => void;
+  children?: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="row-actions">
+    <div className={`row-actions${className ? ` ${className}` : ''}`}>
       <button
         aria-label="Editar"
         className="row-action-button edit"
@@ -27,6 +34,7 @@ export function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete:
           <path d="M10 11v6M14 11v6" />
         </svg>
       </button>
+      {children}
     </div>
   );
 }

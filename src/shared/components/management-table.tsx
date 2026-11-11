@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react';
 import type { TableColumn } from './api-section';
 
 export function ManagementTable<T>({
@@ -7,6 +8,7 @@ export function ManagementTable<T>({
   error,
   rowKey,
   emptyMessage,
+  renderExpandedRow,
 }: {
   columns: TableColumn<T>[];
   rows: T[];
@@ -14,6 +16,7 @@ export function ManagementTable<T>({
   error: string | null;
   rowKey: (item: T) => string | number;
   emptyMessage: string;
+  renderExpandedRow?: (item: T) => ReactNode;
 }) {
   if (error) return <div className="alert error">{error}</div>;
   if (loading) return <div className="empty-state">Consultando API...</div>;
@@ -25,11 +28,21 @@ export function ManagementTable<T>({
           <tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={rowKey(row)}>
-              {columns.map((column) => <td key={column.key}>{column.render(row)}</td>)}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const expandedRow = renderExpandedRow?.(row);
+            return (
+              <Fragment key={rowKey(row)}>
+                <tr>
+                  {columns.map((column) => <td key={column.key}>{column.render(row)}</td>)}
+                </tr>
+                {expandedRow && (
+                  <tr className="management-expanded-row">
+                    <td colSpan={columns.length}>{expandedRow}</td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>

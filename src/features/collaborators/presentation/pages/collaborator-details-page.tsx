@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import {
   collaboratorsApi,
   type Collaborator,
@@ -7,13 +8,32 @@ import {
   type CollaboratorSpeciality,
   type CollaboratorTechnology,
 } from '../../infrastructure/api';
-import { companiesApi, type Branch, type Technology } from '../../../companies/infrastructure/api';
+import { companiesApi, type Branch } from '../../../companies/infrastructure/api';
 import { ActiveBadge } from '../../../../shared/components/api-section';
+import type { PageResponse } from '../../../../shared/api';
+import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
+import { SelectField, type SelectOption } from '../../../../shared/components/select-field';
 
-type CollaboratorTechnologyDetail = CollaboratorTechnology & {
-  technologyName: string;
-  technologyCode: string;
+type AssignmentKind = 'role' | 'speciality' | 'technology';
+
+const assignmentLabels: Record<AssignmentKind, string> = {
+  role: 'rol',
+  speciality: 'especialidad',
+  technology: 'tecnología',
 };
+
+async function loadCatalogPages<T>(request: (page: number) => Promise<PageResponse<T> | null>) {
+  const items: T[] = [];
+  let totalPages = 1;
+  for (let page = 1; page <= totalPages; page += 1) {
+    const response = await request(page);
+    // List endpoints return 204 when there are no records.
+    if (response === null) break;
+    items.push(...response.content);
+    totalPages = response.pagination.totalPages;
+  }
+  return items;
+}
 
 function collaboratorName(collaborator: Collaborator) {
   return [
@@ -29,18 +49,7 @@ function collaboratorName(collaborator: Collaborator) {
 }
 
 async function loadAllRoles() {
-  let page = 1;
-  let totalPages = 1;
-  const roles: CollaboratorRole[] = [];
-
-  while (page <= totalPages) {
-    const response = await collaboratorsApi.listRoles({ page, pageSize: 100 });
-    roles.push(...(response?.content ?? []));
-    totalPages = response?.pagination.totalPages ?? 0;
-    page += 1;
-  }
-
-  return roles;
+  return loadCatalogPages((page) => collaboratorsApi.listRoles({ page, pageSize: 100 }));
 }
 
 async function loadAllRoleRelations(collaboratorId: number) {
@@ -80,57 +89,45 @@ async function loadAllSpecialities(collaboratorId: number) {
 }
 
 async function loadAllTechnologies(collaboratorId: number) {
-  let page = 1;
-  let totalPages = 1;
-  const technologies: CollaboratorTechnology[] = [];
-
-  while (page <= totalPages) {
-    const response = await collaboratorsApi.listTechnologies(collaboratorId, { page, pageSize: 100 });
-    technologies.push(...(response?.content ?? []));
-    totalPages = response?.pagination.totalPages ?? 0;
-    page += 1;
-  }
-
-  return technologies;
-}
-
-async function loadTechnologyCatalog(companyId: number) {
-  const branchResponse = await companiesApi.listBranches(companyId, { page: 1, pageSize: 100 });
-  const branches: Branch[] = branchResponse?.content ?? [];
-  const technologyResponses = await Promise.all(
-    branches.map((branch) => companiesApi.listTechnologies(companyId, branch.id, { page: 1, pageSize: 100 })),
-  );
-  return new Map<number, Technology>(technologyResponses.flatMap((response) => response?.content ?? []).map((technology) => [technology.id, technology]));
+  return loadCatalogPages((page) => collaboratorsApi.listTechnologies(collaboratorId, { page, pageSize: 100 }));
 }
 
 interface CollaboratorDetailsPageProps {
   collaboratorId: number;
   collaboratorCode: string;
+  inlineCollaborator?: Collaborator;
 }
 
 export function CollaboratorDetailsPage({
   collaboratorId,
   collaboratorCode,
+  inlineCollaborator,
 }: CollaboratorDetailsPageProps) {
   const [collaborator, setCollaborator] = useState<Collaborator | null>(null);
   const [roles, setRoles] = useState<CollaboratorRole[]>([]);
   const [relations, setRelations] = useState<CollaboratorRoleRelation[]>([]);
   const [specialities, setSpecialities] = useState<CollaboratorSpeciality[]>([]);
-  const [technologies, setTechnologies] = useState<CollaboratorTechnologyDetail[]>([]);
+  const [technologies, setTechnologies] = useState<CollaboratorTechnology[]>([]);
   const [technologiesLoading, setTechnologiesLoading] = useState(true);
   const [technologiesError, setTechnologiesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [assignmentKind, setAssignmentKind] = useState<AssignmentKind | null>(null);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError(null);
     setTechnologiesLoading(true);
     setTechnologiesError(null);
 
-    const collaboratorRequest = collaboratorCode.trim().length >= 3
-      ? collaboratorsApi.listCollaborators({ code: collaboratorCode, page: 1, pageSize: 20 }).catch(() => null)
-      : Promise.resolve(null);
+    const collaboratorRequest = inlineCollaborator
+      ? Promise.resolve(inlineCollaborator)
+      : collaboratorCode.trim().length >= 3
+        ? collaboratorsApi.listCollaborators({ code: collaboratorCode, page: 1, pageSize: 20 })
+          .then((response) => response?.content.find((item) => item.id === collaboratorId) ?? null)
+        : Promise.resolve(null);
 
     Promise.all([
       loadAllRoles(),
@@ -152,25 +149,15 @@ export function CollaboratorDetailsPage({
         if (active) setLoading(false);
       });
 
-    collaboratorRequest.then((response) => {
-      if (active) setCollaborator(response?.content.find((item) => item.id === collaboratorId) ?? null);
+    collaboratorRequest.then((result) => {
+      if (active) setCollaborator(result);
+    }).catch((cause) => {
+      if (active) setError(cause instanceof Error ? cause.message : 'No se pudo consultar el colaborador');
     });
 
-    Promise.all([loadAllTechnologies(collaboratorId), collaboratorRequest])
-      .then(async ([technologyRelations, collaboratorResponse]) => {
-        const foundCollaborator = collaboratorResponse?.content.find((item) => item.id === collaboratorId);
-        const catalog = technologyRelations.length && foundCollaborator?.company.id
-          ? await loadTechnologyCatalog(foundCollaborator.company.id)
-          : new Map<number, Technology>();
-        if (!active) return;
-        setTechnologies(technologyRelations.map((relation) => {
-          const technology = catalog.get(relation.technology.id);
-          return {
-            ...relation,
-            technologyName: technology?.name ?? `Technology #${relation.technology.id}`,
-            technologyCode: technology?.code ?? '—',
-          };
-        }));
+    loadAllTechnologies(collaboratorId)
+      .then((technologyRelations) => {
+        if (active) setTechnologies(technologyRelations);
       })
       .catch((cause) => {
         if (active) setTechnologiesError(cause instanceof Error ? cause.message : 'No se pudieron consultar las tecnologías');
@@ -180,14 +167,24 @@ export function CollaboratorDetailsPage({
     return () => {
       active = false;
     };
-  }, [collaboratorCode, collaboratorId]);
+  }, [collaboratorCode, collaboratorId, inlineCollaborator, revision]);
 
   const rolesById = new Map(roles.map((role) => [role.id, role]));
   const title = collaborator ? collaboratorName(collaborator) : `Colaborador ${collaboratorCode || collaboratorId}`;
+  const selectedCollaborator = inlineCollaborator ?? collaborator;
+  const canAssign = Boolean(selectedCollaborator
+    && selectedCollaborator.state.name.trim().toUpperCase() !== 'INACTIVO');
+  const specialitiesMissingBranch = specialities.some((relation) => !relation.speciality.branch?.name?.trim());
+  const technologiesMissingBranch = technologies.some((relation) => !relation.technology.branch?.name?.trim());
+  const assignedIds = assignmentKind === 'role'
+    ? relations.filter((relation) => relation.isActive).map((relation) => relation.role.id)
+    : assignmentKind === 'speciality'
+      ? specialities.filter((relation) => relation.isActive).map((relation) => relation.speciality.id)
+      : technologies.filter((relation) => relation.isActive).map((relation) => relation.technology.id);
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
+    <div className={inlineCollaborator ? 'collaborator-inline-details' : 'app-shell'}>
+      {!inlineCollaborator && <header className="app-header">
         <div>
           <p className="eyebrow">Following Web</p>
           <h1>{title}</h1>
@@ -199,9 +196,12 @@ export function CollaboratorDetailsPage({
         <a className="button detail-back-button" href="/">
           Volver al listado
         </a>
-      </header>
+      </header>}
 
-      <main className="dashboard">
+      {selectedCollaborator && !canAssign && (
+        <div className="company-scope-hint">No se pueden añadir asignaciones a un colaborador inactivo.</div>
+      )}
+      <div className={inlineCollaborator ? 'collaborator-detail-tables' : 'dashboard'}>
         <section className="resource-section">
           <div className="section-heading">
             <div>
@@ -209,6 +209,9 @@ export function CollaboratorDetailsPage({
               <h2>Roles</h2>
               <p className="muted">Roles relacionados con este colaborador.</p>
             </div>
+            <button className="button primary collaborator-add-button" type="button"
+              disabled={!canAssign || loading || Boolean(error)}
+              onClick={() => setAssignmentKind('role')}>Añadir</button>
           </div>
 
           {error && <div className="alert error">{error}</div>}
@@ -250,8 +253,17 @@ export function CollaboratorDetailsPage({
               <h2>Especialidades</h2>
               <p className="muted">Especialidades relacionadas con este colaborador.</p>
             </div>
+            <button className="button primary collaborator-add-button" type="button"
+              disabled={!canAssign || loading || Boolean(error)}
+              onClick={() => setAssignmentKind('speciality')}>Añadir</button>
           </div>
 
+          {!loading && !error && specialitiesMissingBranch && (
+            <div className="alert warning">
+              La API no incluye la branch de algunas especialidades. Actualiza el backend y las
+              rutinas V1 de la base de datos para mostrarla. Puedes seguir consultando y asignando especialidades.
+            </div>
+          )}
           {error ? null : loading ? (
             <div className="empty-state">Consultando especialidades...</div>
           ) : specialities.length === 0 ? (
@@ -261,6 +273,7 @@ export function CollaboratorDetailsPage({
               <table>
                 <thead>
                   <tr>
+                    <th>Branch</th>
                     <th>Especialidad</th>
                     <th>Estado</th>
                   </tr>
@@ -268,6 +281,7 @@ export function CollaboratorDetailsPage({
                 <tbody>
                   {specialities.map((relation) => (
                     <tr key={relation.id}>
+                      <td>{relation.speciality.branch?.name?.trim() || 'No informado'}</td>
                       <td>{relation.speciality.name}</td>
                       <td><ActiveBadge active={relation.isActive} /></td>
                     </tr>
@@ -285,9 +299,18 @@ export function CollaboratorDetailsPage({
               <h2>Tecnologías</h2>
               <p className="muted">Tecnologías asignadas a este colaborador.</p>
             </div>
+            <button className="button primary collaborator-add-button" type="button"
+              disabled={!canAssign || technologiesLoading || Boolean(technologiesError)}
+              onClick={() => setAssignmentKind('technology')}>Añadir</button>
           </div>
 
           {technologiesError && <div className="alert error">{technologiesError}</div>}
+          {!technologiesLoading && !technologiesError && technologiesMissingBranch && (
+            <div className="alert warning">
+              La API no incluye la branch de algunas tecnologías. Actualiza el backend y las
+              rutinas V1 de la base de datos para mostrarla. Puedes seguir consultando y asignando tecnologías.
+            </div>
+          )}
           {technologiesLoading ? (
             <div className="empty-state">Consultando tecnologías...</div>
           ) : technologiesError ? null : technologies.length === 0 ? (
@@ -297,6 +320,7 @@ export function CollaboratorDetailsPage({
               <table>
                 <thead>
                   <tr>
+                    <th>Branch</th>
                     <th>Código</th>
                     <th>Tecnología</th>
                     <th>Estado</th>
@@ -305,8 +329,9 @@ export function CollaboratorDetailsPage({
                 <tbody>
                   {technologies.map((relation) => (
                     <tr key={relation.id}>
-                      <td>{relation.technologyCode}</td>
-                      <td>{relation.technologyName}</td>
+                      <td>{relation.technology.branch?.name?.trim() || 'No informado'}</td>
+                      <td>{relation.technology.code}</td>
+                      <td>{relation.technology.name}</td>
                       <td><ActiveBadge active={relation.isActive} /></td>
                     </tr>
                   ))}
@@ -315,7 +340,148 @@ export function CollaboratorDetailsPage({
             </div>
           )}
         </section>
-      </main>
+      </div>
+      {assignmentKind && selectedCollaborator && (
+        <CollaboratorAssignmentModal
+          key={`${collaboratorId}:${assignmentKind}`}
+          kind={assignmentKind}
+          collaborator={selectedCollaborator}
+          assignedIds={assignedIds}
+          onClose={() => setAssignmentKind(null)}
+          onAssigned={() => {
+            setAssignmentKind(null);
+            setRevision((current) => current + 1);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function CollaboratorAssignmentModal({ kind, collaborator, assignedIds, onClose, onAssigned }: {
+  kind: AssignmentKind;
+  collaborator: Collaborator;
+  assignedIds: number[];
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchId, setBranchId] = useState('');
+  const [options, setOptions] = useState<SelectOption[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const companyId = collaborator.company.id;
+  const label = assignmentLabels[kind];
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setCatalogError(null);
+    const request = kind === 'role'
+      ? loadAllRoles().then((roles) => {
+          if (active) setOptions(roles.filter((role) => role.isActive)
+            .map((role) => ({ value: role.id, label: `${role.code} · ${role.name}` })));
+        })
+      : loadCatalogPages((page) => companiesApi.listBranches(companyId, { page, pageSize: 100 }))
+        .then((items) => {
+          if (active) setBranches(items.filter((branch) => branch.isActive));
+        });
+    void request.catch((cause) => {
+      if (active) setCatalogError(cause instanceof Error ? cause.message : 'No se pudo cargar el catálogo.');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [kind, companyId]);
+
+  useEffect(() => {
+    if (kind === 'role' || !branchId) return;
+    let active = true;
+    setLoading(true);
+    setCatalogError(null);
+    const request = kind === 'speciality'
+      ? loadCatalogPages((page) => companiesApi.listSpecialities(companyId, Number(branchId), { page, pageSize: 100 }))
+      : loadCatalogPages((page) => companiesApi.listTechnologies(companyId, Number(branchId), { page, pageSize: 100 }));
+    void request.then((items) => {
+      if (active) setOptions(items.filter((item) => item.isActive)
+        .map((item) => ({ value: item.id, label: `${item.code} · ${item.name}` })));
+    }).catch((cause) => {
+      if (active) setCatalogError(cause instanceof Error ? cause.message : 'No se pudo cargar el catálogo.');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [kind, companyId, branchId]);
+
+  const availableOptions = options.filter((option) => !assignedIds.includes(Number(option.value)));
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
+    if (collaborator.state.name.trim().toUpperCase() === 'INACTIVO') {
+      setFormError('No se pueden añadir asignaciones a un colaborador inactivo.');
+      return;
+    }
+    if (loading || catalogError || !availableOptions.some((option) => String(option.value) === selectedId)) {
+      setFormError('Selecciona una opción disponible para asignar.');
+      return;
+    }
+    setSaving(true);
+    setFormError(null);
+    try {
+      const id = Number(selectedId);
+      const result = kind === 'role'
+        ? await collaboratorsApi.createRoleRelation(collaborator.id, { role: { id } })
+        : kind === 'speciality'
+          ? await collaboratorsApi.createSpeciality(collaborator.id, { speciality: { id } })
+          : await collaboratorsApi.createTechnology(collaborator.id, { technology: { id } });
+      if (!result) throw new Error('La API no devolvió la asignación creada.');
+      onAssigned();
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'No se pudo realizar la asignación.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const close = () => { if (!saving) onClose(); };
+  return createPortal(
+    <ResourceModal open title={`Añadir ${label}`} onClose={close}>
+      <form className="modal-form" onSubmit={(event) => void submit(event)}>
+        <p className="muted">Colaborador: {collaborator.code} · {collaboratorName(collaborator)}</p>
+        {kind !== 'role' && (
+          <SelectField label="Branch" value={branchId}
+            options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+            onChange={(event) => {
+              setBranchId(event.target.value);
+              setSelectedId('');
+              setOptions([]);
+              setFormError(null);
+              setCatalogError(null);
+              if (!event.target.value) setLoading(false);
+            }}
+            disabled={saving || branches.length === 0} required />
+        )}
+        <SelectField label={kind === 'role' ? 'Rol' : kind === 'speciality' ? 'Especialidad' : 'Tecnología'}
+          value={selectedId} options={availableOptions}
+          onChange={(event) => { setSelectedId(event.target.value); setFormError(null); }}
+          disabled={saving || loading || Boolean(catalogError) || (kind !== 'role' && !branchId)} required />
+        {loading && <span className="muted">Cargando catálogo...</span>}
+        {!loading && !catalogError && (kind === 'role' || branchId) && availableOptions.length === 0 && (
+          <span className="muted">No hay opciones activas pendientes de asignar.</span>
+        )}
+        {!loading && !catalogError && kind !== 'role' && branches.length === 0 && (
+          <span className="muted">No hay branches activas para la compañía del colaborador.</span>
+        )}
+        {catalogError && <div className="alert error">{catalogError}</div>}
+        {formError && <div className="alert error">{formError}</div>}
+        <ModalActions onCancel={close} saving={saving} submitLabel="Asignar"
+          submitDisabled={loading || Boolean(catalogError) || !selectedId || availableOptions.length === 0} />
+      </form>
+    </ResourceModal>,
+    document.body,
   );
 }
