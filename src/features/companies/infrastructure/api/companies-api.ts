@@ -159,6 +159,13 @@ export interface SpecialityCreateRequest {
   description?: string;
 }
 
+export interface SpecialityPatchRequest {
+  code?: string;
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
 export interface Section {
   id: number;
   name: string;
@@ -374,7 +381,7 @@ export class CompaniesApi {
     );
   }
 
-  listSpecialities(companyId: number, branchId: number, query: PaginationQuery = {}) {
+  listSpecialities(companyId: number, branchId: number, query: NameCodeCatalogQuery = {}) {
     return this.client.get<PageResponse<Speciality>>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities`,
       query,
@@ -389,6 +396,19 @@ export class CompaniesApi {
     return this.client.post<Speciality>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities`,
       body,
+    );
+  }
+
+  patchSpeciality(companyId: number, branchId: number, specialityId: number, body: SpecialityPatchRequest) {
+    return this.client.patch<Speciality>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}`,
+      body,
+    );
+  }
+
+  deleteSpeciality(companyId: number, branchId: number, specialityId: number) {
+    return this.client.delete(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}`,
     );
   }
 

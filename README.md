@@ -85,6 +85,12 @@ backend y las rutinas V1. Este aviso no bloquea las asignaciones.
 
 ## Estándar de catálogos
 
+Companies incluye las pestañas Companies, Branches, Technologies y
+Especialidades. Especialidades se administra aquí, no en Additional catalogs:
+usa la compañía global y una branch, filtros por código y nombre (mínimo tres
+caracteres), alta/edición en modal y acciones de editar o desactivar. El listado
+muestra Branch, Código, Nombre, Descripción, Estado y Acciones.
+
 Las secciones de administración de catálogos siguen el patrón de Companies:
 
 - Organizar catálogos relacionados en pestañas y mostrar en cada pestaña los

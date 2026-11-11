@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Field } from './field';
 
 export interface CatalogFilterValues {
@@ -10,10 +10,16 @@ export function CatalogFilters({
   onApply,
   onClear,
   showCode = true,
+  children,
+  className = 'catalog-filter-form',
+  disabled = false,
 }: {
   onApply: (filters: CatalogFilterValues) => void;
   onClear?: () => void;
   showCode?: boolean;
+  children?: ReactNode;
+  className?: string;
+  disabled?: boolean;
 }) {
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -45,11 +51,12 @@ export function CatalogFilters({
   }
 
   return (
-    <form className="catalog-filter-form" onSubmit={submit}>
+    <form className={className} onSubmit={submit}>
+      {children}
       {showCode && <Field label="Filtrar por código" value={code} onChange={(event) => setCode(event.target.value)} />}
       <Field label="Filtrar por nombre" value={name} onChange={(event) => setName(event.target.value)} />
       <div className="management-filter-actions">
-        <button className="button primary" type="submit">Filtrar</button>
+        <button className="button primary" type="submit" disabled={disabled}>Filtrar</button>
         <button className="button secondary" type="button" onClick={clear}>Limpiar</button>
       </div>
       {error && <span className="form-error catalog-filter-error">{error}</span>}

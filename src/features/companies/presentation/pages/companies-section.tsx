@@ -22,9 +22,10 @@ import { ManagementTable } from '../../../../shared/components/management-table'
 import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
 import { RowActions } from '../../../../shared/components/row-actions';
 import { useGlobalCompany } from '../../../../app/providers/company-context';
+import { SpecialitiesTab } from './specialities-tab';
 
 const pagination = { page: 1, pageSize: 100 };
-type ResourceTab = 'companies' | 'branches' | 'technologies';
+type ResourceTab = 'companies' | 'branches' | 'technologies' | 'specialities';
 
 export function CompaniesSection() {
   const { selectedCompanyId } = useGlobalCompany();
@@ -33,6 +34,7 @@ export function CompaniesSection() {
     { id: 'companies', label: 'Companies' },
     { id: 'branches', label: 'Branches' },
     { id: 'technologies', label: 'Technologies' },
+    { id: 'specialities', label: 'Especialidades' },
   ];
 
   return (
@@ -41,7 +43,7 @@ export function CompaniesSection() {
         <div>
           <p className="eyebrow">Catálogos</p>
           <h2>Companies</h2>
-          <p className="muted">Administra compañías, branches y technologies.</p>
+          <p className="muted">Administra compañías, branches, technologies y especialidades.</p>
         </div>
       </div>
       <div className="management-tabs" role="tablist" aria-label="Catálogos de compañías">
@@ -62,6 +64,7 @@ export function CompaniesSection() {
         {activeTab === 'companies' && <CompaniesTab />}
         {activeTab === 'branches' && <BranchesTab key={selectedCompanyId ?? 'all'} />}
         {activeTab === 'technologies' && <TechnologiesTab key={selectedCompanyId ?? 'all'} />}
+        {activeTab === 'specialities' && <SpecialitiesTab key={selectedCompanyId ?? 'all'} />}
       </div>
     </section>
   );

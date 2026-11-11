@@ -38,7 +38,6 @@ import {
   type Section,
   type Skill,
   type SkillLevel,
-  type Speciality,
   type Subperiod,
   type Team,
   type TeamPatchRequest,
@@ -217,7 +216,7 @@ export function AdditionalCatalogsSection() {
         <div>
           <p className="eyebrow">Catálogos</p>
           <h2>Additional catalogs</h2>
-          <p className="muted">Administra especialidades, skills, entregables y miembros de equipos.</p>
+          <p className="muted">Administra skills, entregables y miembros de equipos.</p>
         </div>
       </div>
       {!selectedCompanyId && (
@@ -226,7 +225,6 @@ export function AdditionalCatalogsSection() {
         </div>
       )}
       <div className="resource-grid additional-catalog-grid">
-        <SpecialitiesSection key={`specialities:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <SkillsSection key={`skills:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <SkillLevelsSection key={`levels:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <DeliverablesSection key={`deliverables:${selectedCompanyId ?? 'all'}`} revision={catalogRevision} onSaved={refreshCatalogs} />
@@ -371,49 +369,6 @@ function SubperiodsSection({ revision, onSaved }: {
         <Field label="Fin" type="date" value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} required />
       </>}
       create={(form) => companyId && periodId ? companiesApi.createSubperiod(companyId, periodId, form) : Promise.resolve(null)}
-      onSaved={onSaved}
-    />
-  );
-}
-
-function SpecialitiesSection({ revision, onSaved }: {
-  revision: number;
-  onSaved: () => void;
-}) {
-  const { selectedCompanyId: companyId } = useGlobalCompany();
-  const [branchId, setBranchId] = useState<Id>();
-  const branches = useOptions(`speciality-branches:${companyId}:${revision}`, () =>
-    companyId ? companiesApi.listBranches(companyId, pagination) : Promise.resolve(null),
-  );
-  const load = useScopedList(`specialities:${companyId}:${branchId}:${revision}`, () =>
-    companyId && branchId ? companiesApi.listSpecialities(companyId, branchId, pagination) : Promise.resolve(null),
-  );
-  const columns: TableColumn<Speciality>[] = [
-    { key: 'code', label: 'Código', render: (item) => item.code },
-    { key: 'name', label: 'Nombre', render: (item) => item.name },
-    { key: 'description', label: 'Descripción', render: (item) => item.description ?? '—' },
-    { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
-  ];
-
-  return (
-    <ManagedResourceSection
-      title="Especialidades"
-      description="Consulta y registra especialidades dentro de una branch."
-      columns={columns}
-      rows={load.data}
-      loading={load.loading}
-      error={load.error}
-      enabled={Boolean(companyId && branchId)}
-      filterFields={<>
-        <SelectField label="Branch" value={branchId ?? ''} options={optionsOf(branches, (item) => item.name)} onChange={(event) => setBranchId(idOf(event.target.value))} disabled={!companyId} required />
-      </>}
-      initialForm={{ code: '', name: '', description: '' }}
-      renderFields={(form, setForm) => <>
-        <Field label="Código" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
-        <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-        <Field label="Descripción" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-      </>}
-      create={(form) => companyId && branchId ? companiesApi.createSpeciality(companyId, branchId, form) : Promise.resolve(null)}
       onSaved={onSaved}
     />
   );
