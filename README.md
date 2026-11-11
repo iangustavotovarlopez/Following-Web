@@ -30,7 +30,7 @@ La vista inicial incluye tablas y formularios de alta para:
 - Projects.
 - Services y sus catálogos.
 
-Companies, Services y People organizan sus catálogos en pestañas. En esas
+Companies, Services, People y Proyectos organizan sus catálogos en pestañas. En esas
 secciones, los filtros se muestran sobre la tabla, y las altas y ediciones se
 realizan desde modales con acciones por fila para editar o desactivar.
 
@@ -71,8 +71,26 @@ cuando el proyecto pertenece a la compañía seleccionada; su listado conserva
 los filtros propios de solicitudes y el ámbito de compañía.
 Los catálogos independientes de branch conservan su ámbito original y los
 campos de compañía en formularios de alta/edición siguen permitiendo asignar o
-cambiar la relación del registro. Después de la selección inicial, limpiar la
+cambiar la relación del registro, salvo la compañía de un proyecto existente,
+que es de solo lectura porque su API no permite cambiarla. Después de la selección inicial, limpiar la
 compañía permite los listados globales que ya admitían esa consulta.
+
+Proyectos tiene las pestañas **Proyectos** y **Planning**, ambas independientes
+de branch y limitadas por la compañía global. Proyectos muestra filtros de
+código, nombre y estado, el botón **Nuevo +**, y acciones por fila para editar,
+dar de baja y desplegar detalles. Las altas, ediciones y la administración de
+estados se realizan en modales. La baja asigna el estado Inactivo y conserva la
+planeación; requiere un estado Inactivo con `isActive=true` en el API.
+
+El icono de detalles muestra debajo del proyecto su planeación activa en una
+tabla con periodos, subperiodos, secciones y fracciones, sus fechas y estados,
+sin abrir otra ventana. La pestaña Planning permite seleccionar un proyecto,
+consultar sus planeaciones y expandir su jerarquía. **Nuevo +** abre el modal
+para crear una planeación a partir de un periodo activo de la compañía del
+proyecto. Esta creación se trasladó desde Relaciones avanzadas; las demás
+asignaciones de planeación permanecen allí y se actualizan tras las mutaciones.
+El API sigue permitiendo una sola planeación activa por proyecto y sus errores
+se muestran sin reemplazar automáticamente la existente.
 
 En Collaborators, el icono de tabla en la columna de acciones permite desplegar
 y contraer los roles, especialidades y tecnologías debajo de la misma fila.

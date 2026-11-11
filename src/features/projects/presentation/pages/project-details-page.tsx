@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { ActiveBadge } from '../../../../shared/components/api-section';
-import { projectsApi, type Planning, type PlanningPeriod } from '../../infrastructure/api';
+import { type PlanningPeriod } from '../../infrastructure/api';
+import { useProjectPlanning } from '../use-project-planning';
 
 type DateRange = { startDate?: string; endDate?: string };
 const dateFormatter = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -65,33 +65,7 @@ interface ProjectDetailsPageProps {
 }
 
 export function ProjectDetailsPage({ projectId, projectCode, projectName }: ProjectDetailsPageProps) {
-  const [plannings, setPlannings] = useState<Planning[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-
-    projectsApi
-      .listPlanning(projectId)
-      .then((response) => {
-        if (active) setPlannings(response ?? []);
-      })
-      .catch((cause) => {
-        if (active) {
-          setError(cause instanceof Error ? cause.message : 'No se pudieron consultar las planeaciones');
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [projectId]);
+  const { plannings, loading, error, refresh } = useProjectPlanning(projectId);
 
   const title = projectName || `Proyecto ${projectCode || projectId}`;
   const today = new Date();
@@ -120,6 +94,7 @@ export function ProjectDetailsPage({ projectId, projectCode, projectName }: Proj
               <h2>Planeaciones</h2>
               <p className="muted">Planeaciones registradas para este proyecto.</p>
             </div>
+            {error && <button className="button secondary" type="button" onClick={refresh}>Reintentar</button>}
           </div>
 
           {error && <div className="alert error">{error}</div>}

@@ -634,14 +634,16 @@ button {
 }
 
 .collaborator-inline-details .resource-section,
-.team-inline-details .resource-section {
+.team-inline-details .resource-section,
+.project-inline-details .resource-section {
   min-width: 0;
   border-radius: 10px;
   box-shadow: none;
 }
 
 .collaborator-inline-details .section-heading,
-.team-inline-details .section-heading {
+.team-inline-details .section-heading,
+.project-inline-details .section-heading {
   padding: 16px;
   flex-direction: row;
 }
@@ -653,25 +655,48 @@ button {
 }
 
 .collaborator-inline-details h2,
-.team-inline-details h2 {
+.team-inline-details h2,
+.project-inline-details h2 {
   font-size: 1rem;
 }
 
 .collaborator-inline-details .section-heading .muted,
-.team-inline-details .section-heading .muted {
+.team-inline-details .section-heading .muted,
+.project-inline-details .section-heading .muted {
   font-size: 0.8rem;
 }
 
 .collaborator-inline-details th,
 .collaborator-inline-details td,
 .team-inline-details th,
-.team-inline-details td {
+.team-inline-details td,
+.project-inline-details th,
+.project-inline-details td {
   padding: 10px 16px;
 }
 
 .collaborator-inline-details .empty-state,
-.team-inline-details .empty-state {
+.team-inline-details .empty-state,
+.project-inline-details .empty-state {
   padding: 20px 16px;
+}
+
+.planning-summary-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.planning-summary-heading h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.planning-hierarchy-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .row-action-button:disabled {

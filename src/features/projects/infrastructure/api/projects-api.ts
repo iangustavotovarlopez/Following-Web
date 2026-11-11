@@ -20,8 +20,8 @@ export interface Project {
   id: number;
   code: string;
   name: string;
-  company: { id: number };
-  state: { id: number };
+  company: { id: number; name?: string; isActive?: boolean };
+  state: { id: number; name?: string; isActive?: boolean };
 }
 
 export interface ProjectQuery extends PaginationQuery {
@@ -41,7 +41,6 @@ export interface CreateProjectRequest {
 export interface PatchProjectRequest {
   code?: string;
   name?: string;
-  company?: { id: number };
   state?: { id: number };
 }
 
@@ -132,6 +131,10 @@ export class ProjectsApi {
 
   patchProject(id: number, body: PatchProjectRequest) {
     return this.client.patch<Project>(`/projects/v0/projects/${id}`, body);
+  }
+
+  deleteProject(id: number) {
+    return this.client.delete(`/projects/v0/projects/${id}`);
   }
 
   listPlanning(projectId: number) {

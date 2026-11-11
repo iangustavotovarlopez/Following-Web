@@ -23,7 +23,7 @@ import {
 import { Field } from '../../../../shared/components/field';
 import { SelectField } from '../../../../shared/components/select-field';
 import { SubmitButton } from '../../../../shared/components/submit-button';
-import { API_MUTATION_EVENT, type ApiMutationDetail } from '../../../../shared/api';
+import { API_MUTATION_EVENT, loadCatalogPages, type ApiMutationDetail } from '../../../../shared/api';
 import { useApiAction } from '../../../../shared/hooks/use-api-action';
 import { useGlobalCompany } from '../../../../app/providers/company-context';
 
@@ -105,6 +105,7 @@ export function AdvancedRelationshipsManagement() {
   const [metadata, setMetadata] = useState<ServiceMetadata[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [planningRevision, setPlanningRevision] = useState(0);
+  const [projectRevision, setProjectRevision] = useState(0);
   const [collaboratorRevision, setCollaboratorRevision] = useState(0);
 
   useEffect(() => {
@@ -112,13 +113,13 @@ export function AdvancedRelationshipsManagement() {
     setProjects([]);
     setCatalogError(null);
     Promise.all([
-      projectsApi.listProjects({ ...pagination, 'company.id': selectedCompanyId }),
+      loadCatalogPages((page) => projectsApi.listProjects({ page, pageSize: 100, 'company.id': selectedCompanyId })),
       servicesApi.listEnvironments(pagination),
       servicesApi.listMetadata(pagination),
     ])
       .then(([projectResponse, environmentResponse, metadataResponse]) => {
         if (!active) return;
-        setProjects(projectResponse?.content ?? []);
+        setProjects(projectResponse);
         setEnvironments(environmentResponse?.content ?? []);
         setMetadata(metadataResponse?.content ?? []);
       })
@@ -126,7 +127,7 @@ export function AdvancedRelationshipsManagement() {
         if (active) setCatalogError(cause instanceof Error ? cause.message : 'No se pudieron cargar los catálogos');
       });
     return () => { active = false; };
-  }, [selectedCompanyId]);
+  }, [selectedCompanyId, projectRevision]);
 
   useEffect(() => {
     function handleMutation(event: Event) {
@@ -134,12 +135,12 @@ export function AdvancedRelationshipsManagement() {
       if (path === '/collaborators/v0/collaborators' || /^\/collaborators\/v0\/collaborators\/\d+$/.test(path)) {
         setCollaboratorRevision((current) => current + 1);
       }
+      if (/^\/projects\/v0\/projects(?:\/\d+)?$/.test(path)) setProjectRevision((current) => current + 1);
+      if (/^\/projects\/v0\/projects\/\d+\/plannings(?:\/.*)?$/.test(path)) setPlanningRevision((current) => current + 1);
     }
     window.addEventListener(API_MUTATION_EVENT, handleMutation);
     return () => window.removeEventListener(API_MUTATION_EVENT, handleMutation);
   }, []);
-
-  const refreshPlannings = () => setPlanningRevision((revision) => revision + 1);
 
   return (
     <div className="resource-grid">
@@ -151,9 +152,8 @@ export function AdvancedRelationshipsManagement() {
       )}
       <CollaboratorTechnologySection key={`technology:${selectedCompanyId}:${selectedBranchId}`} collaboratorRevision={collaboratorRevision} />
       <CollaboratorSkillLevelSection key={`skill-level:${selectedCompanyId}:${selectedBranchId}`} collaboratorRevision={collaboratorRevision} />
-      <CreatePlanningSection key={`create-planning:${selectedCompanyId ?? 'all'}`} projects={projects} onCreated={refreshPlannings} />
-      <PlanningPeriodSection key={`planning-period:${selectedCompanyId ?? 'all'}`} projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
-      <PlanningSectionAssignment key={`planning-section:${selectedCompanyId ?? 'all'}`} projects={projects} revision={planningRevision} onSaved={refreshPlannings} />
+      <PlanningPeriodSection key={`planning-period:${selectedCompanyId ?? 'all'}`} projects={projects} revision={planningRevision} />
+      <PlanningSectionAssignment key={`planning-section:${selectedCompanyId ?? 'all'}`} projects={projects} revision={planningRevision} />
       <ServiceEnvironmentSection environments={environments} />
       <ServiceMetadataSection metadata={metadata} />
     </div>
@@ -249,45 +249,9 @@ function CollaboratorSkillLevelSection({ collaboratorRevision }: {
   );
 }
 
-function CreatePlanningSection({ projects, onCreated }: { projects: Project[]; onCreated: () => void }) {
-  const [projectId, setProjectId] = useState<Id>();
-  const [periodId, setPeriodId] = useState<Id>();
-  const [name, setName] = useState('');
-  const project = projects.find((item) => item.id === projectId);
-  const periods = useCatalog<Period>(`planning-periods:${projectId}`, Boolean(project), () =>
-    companiesApi.listPeriods(project!.company.id, pagination).then((response) => response?.content ?? []),
-  );
-  const action = useApiAction<{ id: number; name: string; period: { id: number } }>();
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!projectId || !periodId || !name.trim()) return;
-    void action.execute(() => projectsApi.createPlanning(projectId, { name: name.trim(), period: { id: periodId } }))
-      .then((result) => { if (result) { setName(''); onCreated(); } })
-      .catch(() => undefined);
-  }
-
-  return (
-    <RelationSection title="Crear planeación" description="Crea una planeación asociada a un proyecto y un periodo.">
-      <BaseForm onSubmit={submit}>
-        <SelectField label="Proyecto" value={projectId ?? ''} options={optionsOf(projects, (item) => item.name)} onChange={(event) => {
-          setProjectId(idOf(event.target.value));
-          setPeriodId(undefined);
-        }} required />
-        <SelectField label="Periodo" value={periodId ?? ''} options={optionsOf(periods.items, (item) => item.name)} onChange={(event) => setPeriodId(idOf(event.target.value))} disabled={!projectId} required />
-        <Field label="Nombre de la planeación" value={name} onChange={(event) => setName(event.target.value)} required />
-        <SubmitButton loading={action.loading} disabled={!projectId || !periodId || !name.trim()}>Crear planeación</SubmitButton>
-        {periods.error && <span className="form-error">{periods.error}</span>}
-        <ActionMessage error={action.error} result={action.result} />
-      </BaseForm>
-    </RelationSection>
-  );
-}
-
-function PlanningPeriodSection({ projects, revision, onSaved }: {
+function PlanningPeriodSection({ projects, revision }: {
   projects: Project[];
   revision: number;
-  onSaved: () => void;
 }) {
   const [projectId, setProjectId] = useState<Id>();
   const [planningId, setPlanningId] = useState<Id>();
@@ -308,7 +272,7 @@ function PlanningPeriodSection({ projects, revision, onSaved }: {
     void action.execute(() => projectsApi.addPlanningPeriod(projectId, planningId, {
       period: { id: periodId },
       isAdditional,
-    })).then((result) => { if (result) onSaved(); }).catch(() => undefined);
+    })).catch(() => undefined);
   }
 
   return (
@@ -331,10 +295,9 @@ function PlanningPeriodSection({ projects, revision, onSaved }: {
   );
 }
 
-function PlanningSectionAssignment({ projects, revision, onSaved }: {
+function PlanningSectionAssignment({ projects, revision }: {
   projects: Project[];
   revision: number;
-  onSaved: () => void;
 }) {
   const [projectId, setProjectId] = useState<Id>();
   const [planningId, setPlanningId] = useState<Id>();
@@ -355,7 +318,6 @@ function PlanningSectionAssignment({ projects, revision, onSaved }: {
       subperiod: { id: subperiodId },
       section: { id: sectionId },
     }))
-      .then((result) => { if (result !== null) onSaved(); })
       .catch(() => undefined);
   }
 
