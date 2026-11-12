@@ -44,10 +44,55 @@ API para:
 - Ambientes y metadata asignados a servicios.
 
 La sección de staffing carga los estados desde `/staffing/v0/states` para el
-selector de alta y permite filtrar las solicitudes por los IDs de proyecto,
-periodo, subperiodo, sección, fracción, especialidad y estado. La vista de
+selector de alta y permite filtrar las solicitudes mediante selectores de proyecto,
+periodo, subperiodo, sección, fracción, especialidad y estado. Los filtros se
+combinan con AND en el API, incluida la compañía global antes de paginar.
+La vista de
 detalle de proyecto consume las fechas que devuelve la API dentro de la
 planeación, sin volver a consultar cada catálogo de periodos y secciones.
+
+### Solicitudes y asignaciones de staffing
+
+Solicitudes de staffing utiliza filtros compactos sobre `ManagementTable`,
+paginación de 20 solicitudes y **Nuevo +** para abrir un `ResourceModal` de alta.
+No existe un formulario de creación permanente junto al listado. El modal usa
+`StaffingScopeFields`, compartido con los filtros, para seleccionar la jerarquía
+completa y la especialidad de la branch global. Los catálogos se cargan con
+`loadCatalogPages`, no sólo su primera página.
+
+Las columnas Proyecto, Periodo, Subperiodo, Sección, Fracción y Especialidad
+muestran **código · nombre** incluidos por el API, no IDs de llaves foráneas ni
+consultas por fila para reconstruir nombres. Los estados y catálogos sin código
+muestran su nombre real. Referencias antiguas incompletas tienen aviso visible
+y `No informado` si no contienen datos de presentación.
+
+La solicitud no pide ni muestra capacidad. Su botón de detalles despliega
+debajo de la misma fila una tabla de **asignaciones activas e inactivas**, con
+colaborador (código · nombre compuesto en el cliente), tipo, rol, capacidad
+porcentual, actividad y `RowActions` para editar o dar de baja. **Añadir +** está
+disponible también cuando no hay asignaciones. Alta y edición usan modales;
+eliminar solicita confirmación y realiza baja lógica, conservando el historial.
+Las mutaciones actualizan la tabla sin cerrar el detalle y no anuncian éxito
+si falta la respuesta requerida o falla el API.
+
+El modal de alta busca localmente por código o nombre completo desde tres
+caracteres, en todas las páginas de colaboradores de la compañía del proyecto.
+Selecciona tipo y rol desde sus catálogos reales. Excluye duplicados del mismo
+colaborador/tipo/rol; una relación inactiva con esa combinación se reactiva.
+Los roles de staffing son independientes de los roles personales asignados.
+
+La capacidad se introduce libremente con hasta dos decimales y accesos rápidos
+**25%, 35%, 50% y 100%**. No se restringe a esas opciones ni se calcula desde el
+tipo. La suma de asignaciones activas del mismo colaborador **en esa solicitud**
+no puede superar 100%; la interfaz muestra el disponible y el API comprueba el
+límite concurrentemente. Edición permite capacidad, tipo, rol y actividad;
+colaborador y solicitud permanecen fijos. PATCH envía únicamente cambios.
+
+Cambiar compañía o branch reinicia filtros, páginas, modales y detalles, y
+descarta respuestas anteriores. Los contratos y ejemplos HTTP completos están
+en el README del backend. Requiere backend y ambas V1 actualizados: editar V1
+no actualiza una base ya creada; no se recrean bases existentes automáticamente.
+Este flujo afecta Web y backend; no agrega pantallas de staffing a Android.
 
 Al entrar al panel aparece un modal para seleccionar **compañía y branch**.
 Si la compañía tiene branches, debe elegirse una para continuar; si no tiene,
