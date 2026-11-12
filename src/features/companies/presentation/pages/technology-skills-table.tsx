@@ -5,6 +5,8 @@ import { ActiveBadge, type TableColumn } from '../../../../shared/components/api
 import { Field } from '../../../../shared/components/field';
 import { ManagementTable } from '../../../../shared/components/management-table';
 import { ModalActions, ResourceModal } from '../../../../shared/components/resource-modal';
+import { RowActions } from '../../../../shared/components/row-actions';
+import { SelectField } from '../../../../shared/components/select-field';
 import { companiesApi, type Skill, type SkillLevel, type Technology } from '../../infrastructure/api';
 
 function useTechnologyDetails<T>(path: string, request: (page: number) => Promise<PageResponse<T> | null>) {
@@ -32,7 +34,9 @@ function useTechnologyDetails<T>(path: string, request: (page: number) => Promis
   useEffect(() => {
     function onMutation(event: Event) {
       const { path: changedPath } = (event as CustomEvent<ApiMutationDetail>).detail;
-      if (changedPath === path) refresh();
+      // Item mutations refresh this collection, but not mutations of nested levels.
+      if (changedPath === path
+          || (changedPath.startsWith(`${path}/`) && /^\d+$/.test(changedPath.slice(path.length + 1)))) refresh();
     }
     window.addEventListener(API_MUTATION_EVENT, onMutation);
     return () => window.removeEventListener(API_MUTATION_EVENT, onMutation);
@@ -42,6 +46,15 @@ function useTechnologyDetails<T>(path: string, request: (page: number) => Promis
     return { rows: [], loading: true, error: null, refresh };
   }
   return { rows: state.rows, loading: state.loading, error: state.error, refresh };
+}
+
+function useMounted() {
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  return mounted;
 }
 
 export function CatalogDetailsToggle({ expanded, controls, label, onClick }: {
@@ -65,7 +78,19 @@ export function TechnologySkillsTable({ companyId, branchId, technology }: {
   const skills = useTechnologyDetails<Skill>(path,
     (page) => companiesApi.listSkills(companyId, branchId, technology.id, { page, pageSize: 100 }));
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [creating, setCreating] = useState(false);
+  const [modal, setModal] = useState<{ record?: Skill } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const mounted = useMounted();
+
+  async function deleteSkill(item: Skill) {
+    if (!window.confirm(`¿Deseas desactivar la habilidad "${item.name}"?`)) return;
+    setActionError(null);
+    try {
+      await companiesApi.deleteSkill(companyId, branchId, technology.id, item.id);
+    } catch (cause) {
+      if (mounted.current) setActionError(cause instanceof Error ? cause.message : 'No se pudo desactivar la habilidad.');
+    }
+  }
 
   function toggleLevels(id: number) {
     setExpanded((current) => {
@@ -80,9 +105,12 @@ export function TechnologySkillsTable({ companyId, branchId, technology }: {
     { key: 'name', label: 'Nombre', render: (item) => item.name },
     { key: 'description', label: 'Descripción', render: (item) => item.description || 'No informada' },
     { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
-    { key: 'levels', label: 'Acciones', render: (item) => (
-      <CatalogDetailsToggle expanded={expanded.has(item.id)} controls={`technology-${technology.id}-skill-${item.id}-levels`}
-        label={`niveles de ${item.name}`} onClick={() => toggleLevels(item.id)} />
+    { key: 'actions', label: 'Acciones', render: (item) => (
+      <RowActions onEdit={() => setModal({ record: item })} onDelete={() => void deleteSkill(item)}
+        deleteDisabled={!item.isActive}>
+        <CatalogDetailsToggle expanded={expanded.has(item.id)} controls={`technology-${technology.id}-skill-${item.id}-levels`}
+          label={`niveles de ${item.name}`} onClick={() => toggleLevels(item.id)} />
+      </RowActions>
     ) },
   ];
 
@@ -97,9 +125,10 @@ export function TechnologySkillsTable({ companyId, branchId, technology }: {
           </div>
           <div className="management-filter-actions">
             {skills.error && <button className="button secondary" type="button" onClick={skills.refresh}>Reintentar</button>}
-            <button className="button primary" type="button" onClick={() => setCreating(true)}>Nuevo +</button>
+            <button className="button primary" type="button" onClick={() => setModal({})}>Nuevo +</button>
           </div>
         </div>
+        {actionError && <div className="alert error">{actionError}</div>}
         <ManagementTable columns={columns} rows={skills.rows} loading={skills.loading} error={skills.error}
           rowKey={(item) => item.id} emptyMessage="Esta tecnología aún no tiene habilidades."
           renderExpandedRow={(item) => expanded.has(item.id)
@@ -107,9 +136,9 @@ export function TechnologySkillsTable({ companyId, branchId, technology }: {
                 companyId={companyId} branchId={branchId} technology={technology} skill={item} />
             : null} />
       </section>
-      {creating && createPortal(
-        <TechnologySkillModal companyId={companyId} branchId={branchId} technology={technology}
-          onClose={() => setCreating(false)} />, document.body,
+      {modal && createPortal(
+        <TechnologySkillModal kind="skill" record={modal.record} companyId={companyId} branchId={branchId} technology={technology}
+          onClose={() => setModal(null)} />, document.body,
       )}
     </div>
   );
@@ -121,11 +150,27 @@ function SkillLevelsTable({ companyId, branchId, technology, skill }: {
   const path = `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technology.id}/skills/${skill.id}/levels`;
   const levels = useTechnologyDetails<SkillLevel>(path,
     (page) => companiesApi.listSkillLevels(companyId, branchId, technology.id, skill.id, { page, pageSize: 100 }));
-  const [creating, setCreating] = useState(false);
+  const [modal, setModal] = useState<{ record?: SkillLevel } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const mounted = useMounted();
+
+  async function deleteLevel(item: SkillLevel) {
+    if (!window.confirm(`¿Deseas desactivar el nivel "${item.name}"?`)) return;
+    setActionError(null);
+    try {
+      await companiesApi.deleteSkillLevel(companyId, branchId, technology.id, skill.id, item.id);
+    } catch (cause) {
+      if (mounted.current) setActionError(cause instanceof Error ? cause.message : 'No se pudo desactivar el nivel.');
+    }
+  }
   const columns: TableColumn<SkillLevel>[] = [
     { key: 'name', label: 'Nombre', render: (item) => item.name },
     { key: 'number', label: 'Número', render: (item) => item.number },
     { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
+    { key: 'actions', label: 'Acciones', render: (item) => (
+      <RowActions onEdit={() => setModal({ record: item })} onDelete={() => void deleteLevel(item)}
+        deleteDisabled={!item.isActive} />
+    ) },
   ];
 
   return (
@@ -138,31 +183,37 @@ function SkillLevelsTable({ companyId, branchId, technology, skill }: {
           </div>
           <div className="management-filter-actions">
             {levels.error && <button className="button secondary" type="button" onClick={levels.refresh}>Reintentar</button>}
-            <button className="button primary" type="button" onClick={() => setCreating(true)}>Nuevo +</button>
+            <button className="button primary" type="button" onClick={() => setModal({})}>Nuevo +</button>
           </div>
         </div>
+        {actionError && <div className="alert error">{actionError}</div>}
         <ManagementTable columns={columns} rows={levels.rows} loading={levels.loading} error={levels.error}
           rowKey={(item) => item.id} emptyMessage="Esta habilidad aún no tiene niveles." />
       </section>
-      {creating && createPortal(
-        <TechnologySkillModal companyId={companyId} branchId={branchId} technology={technology} skill={skill}
-          onClose={() => setCreating(false)} />, document.body,
+      {modal && createPortal(
+        <TechnologySkillModal kind="level" record={modal.record} companyId={companyId} branchId={branchId} technology={technology} skill={skill}
+          onClose={() => setModal(null)} />, document.body,
       )}
     </div>
   );
 }
 
-function TechnologySkillModal({ companyId, branchId, technology, skill, onClose }: {
-  companyId: number; branchId: number; technology: Technology; skill?: Skill; onClose: () => void;
-}) {
-  const [draft, setDraft] = useState({ name: '', description: '', number: '0' });
+type TechnologySkillModalProps = {
+  companyId: number; branchId: number; technology: Technology; onClose: () => void;
+} & ({ kind: 'skill'; record?: Skill } | { kind: 'level'; skill: Skill; record?: SkillLevel });
+
+function TechnologySkillModal(props: TechnologySkillModalProps) {
+  const { companyId, branchId, technology, record, onClose } = props;
+  const skill = props.kind === 'level' ? props.skill : undefined;
+  const [draft, setDraft] = useState({
+    name: record?.name ?? '',
+    description: props.kind === 'skill' ? props.record?.description ?? '' : '',
+    number: props.kind === 'level' ? String(props.record?.number ?? 0) : '0',
+    isActive: String(record?.isActive ?? true),
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
+  const mounted = useMounted();
 
   const close = () => { if (!saving) onClose(); };
 
@@ -173,42 +224,60 @@ function TechnologySkillModal({ companyId, branchId, technology, skill, onClose 
       setError('El nombre es obligatorio.');
       return;
     }
-    if (skill && (!/^\d+$/.test(draft.number) || !Number.isSafeInteger(Number(draft.number)))) {
+    if (record && draft.isActive !== 'true' && draft.isActive !== 'false') {
+      setError('Selecciona el estado del registro.');
+      return;
+    }
+    const numberChanged = props.kind === 'level' && (!props.record || draft.number !== String(props.record.number));
+    if (numberChanged && (!/^\d+$/.test(draft.number) || !Number.isSafeInteger(Number(draft.number)))) {
       setError('Indica un número de nivel entero mayor o igual que cero.');
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      const result = skill
-        ? await companiesApi.createSkillLevel(companyId, branchId, technology.id, skill.id,
-            { name: draft.name.trim(), number: Number(draft.number) })
-        : await companiesApi.createSkill(companyId, branchId, technology.id,
-            { name: draft.name.trim(), description: draft.description });
-      if (!result) throw new Error('La API no devolvió el registro creado.');
+      let result: Skill | SkillLevel | null;
+      if (props.kind === 'level') {
+        result = props.record
+          ? await companiesApi.patchSkillLevel(companyId, branchId, technology.id, props.skill.id, props.record.id,
+              { name: draft.name.trim(), number: numberChanged ? Number(draft.number) : undefined, isActive: draft.isActive === 'true' })
+          : await companiesApi.createSkillLevel(companyId, branchId, technology.id, props.skill.id,
+              { name: draft.name.trim(), number: Number(draft.number) });
+      } else {
+        const body = { name: draft.name.trim(), description: draft.description };
+        result = props.record
+          ? await companiesApi.patchSkill(companyId, branchId, technology.id, props.record.id, { ...body, isActive: draft.isActive === 'true' })
+          : await companiesApi.createSkill(companyId, branchId, technology.id, body);
+      }
+      if (!result) throw new Error('La API no devolvió el registro guardado.');
       if (mounted.current) onClose();
     } catch (cause) {
-      if (mounted.current) setError(cause instanceof Error ? cause.message : 'No se pudo crear el registro.');
+      if (mounted.current) setError(cause instanceof Error ? cause.message : 'No se pudo guardar el registro.');
     } finally {
       if (mounted.current) setSaving(false);
     }
   }
 
   return (
-    <ResourceModal open title={skill ? 'Nuevo nivel de habilidad' : 'Nueva habilidad'} dismissible={!saving} onClose={close}>
+    <ResourceModal open title={record ? (skill ? 'Editar nivel de habilidad' : 'Editar habilidad')
+      : (skill ? 'Nuevo nivel de habilidad' : 'Nueva habilidad')} dismissible={!saving} onClose={close}>
       <form className="modal-form" onSubmit={(event) => void submit(event)}>
         <p className="muted">Tecnología: {technology.code} · {technology.name}{skill ? ` · Habilidad: ${skill.name}` : ''}</p>
-        <Field label="Nombre" value={draft.name} required disabled={saving}
+        <Field label="Nombre" value={draft.name} required maxLength={skill ? 100 : 150} disabled={saving}
           onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
         {skill ? (
           <Field label="Número" type="number" min="0" step="1" value={draft.number} required disabled={saving}
             onChange={(event) => setDraft({ ...draft, number: event.target.value })} />
         ) : (
-          <Field label="Descripción" value={draft.description} disabled={saving}
+          <Field label="Descripción" value={draft.description} maxLength={1000} disabled={saving}
             onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
         )}
+        {record && <SelectField label="Estado" value={draft.isActive} required disabled={saving}
+          options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]}
+          onChange={(event) => setDraft({ ...draft, isActive: event.target.value })} />}
         {error && <div className="alert error">{error}</div>}
-        <ModalActions onCancel={close} saving={saving} submitLabel={skill ? 'Crear nivel' : 'Crear habilidad'} />
+        <ModalActions onCancel={close} saving={saving}
+          submitLabel={record ? 'Guardar cambios' : (skill ? 'Crear nivel' : 'Crear habilidad')} />
       </form>
     </ResourceModal>
   );

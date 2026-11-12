@@ -134,8 +134,12 @@ before changing it.
   inactive collaborators/teams from new-assignment flows.
 - In Companies -> Technologies, skills expand under their technology and
   levels under their skill. Keep Nuevo + and create modals available for
-  empty catalogs. Reuse existing scoped GET/POST endpoints and load all
-  detail pages. Refresh only the mutated collection so level creation does
+  empty catalogs. Keep edit modals and confirmed logical DELETE actions on
+  technologies, skills and levels, using scoped PATCH/DELETE endpoints. Skills
+  edit name/description/activity; levels edit name/non-negative number/activity.
+  Preserve parents and inactive history; do not cascade catalog deactivation.
+  Load all detail pages. Refresh only the mutated collection (including its
+  direct item PATCH/DELETE paths, not descendant collections) so a level mutation does
   not close its parent skill. Do not restore standalone skills/levels panels.
 - Display state names with an initial capital per word and spaces, preserving
   IDs. Display branch from relation responses without fetching every catalog.

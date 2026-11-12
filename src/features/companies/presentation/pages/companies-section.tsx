@@ -491,15 +491,14 @@ function TechnologiesTab() {
       key: 'actions',
       label: 'Acciones',
       render: (item) => (
-        <div className="row-actions">
-          <RowActions
-            onDelete={() => void deleteTechnology(item)}
-            onEdit={() => openTechnologyModal(item)}
-          />
+        <RowActions
+          onDelete={() => void deleteTechnology(item)}
+          onEdit={() => openTechnologyModal(item)}
+        >
           <CatalogDetailsToggle expanded={expandedTechnologies.has(item.id)}
             controls={`technology-${item.id}-skills`} label={`habilidades de ${item.name}`}
             onClick={() => toggleDetails(item.id)} />
-        </div>
+        </RowActions>
       ),
     },
   ];

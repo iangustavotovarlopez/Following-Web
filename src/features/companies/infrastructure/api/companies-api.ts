@@ -190,6 +190,12 @@ export interface SkillCreateRequest {
   description?: string;
 }
 
+export interface SkillPatchRequest {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
 export interface SkillLevel {
   id: number;
   name: string;
@@ -200,6 +206,12 @@ export interface SkillLevel {
 export interface SkillLevelCreateRequest {
   name: string;
   number: number;
+}
+
+export interface SkillLevelPatchRequest {
+  name?: string;
+  number?: number;
+  isActive?: boolean;
 }
 
 export interface Team {
@@ -502,16 +514,16 @@ export class CompaniesApi {
     );
   }
 
-  listSkillLevels(
-    companyId: number,
-    branchId: number,
-    technologyId: number,
-    skillId: number,
-    query: PaginationQuery = {},
-  ) {
-    return this.client.get<PageResponse<SkillLevel>>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}/levels`,
-      query,
+  patchSkill(companyId: number, branchId: number, technologyId: number, skillId: number, body: SkillPatchRequest) {
+    return this.client.patch<Skill>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}`,
+      body,
+    );
+  }
+
+  deleteSkill(companyId: number, branchId: number, technologyId: number, skillId: number) {
+    return this.client.delete(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}`,
     );
   }
 
@@ -528,6 +540,40 @@ export class CompaniesApi {
     );
   }
 
+  listSkillLevels(
+    companyId: number,
+    branchId: number,
+    technologyId: number,
+    skillId: number,
+    query: PaginationQuery = {},
+  ) {
+    return this.client.get<PageResponse<SkillLevel>>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}/levels`,
+      query,
+    );
+  }
+
+  patchSkillLevel(companyId: number, branchId: number, technologyId: number, skillId: number,
+    levelId: number, body: SkillLevelPatchRequest) {
+    return this.client.patch<SkillLevel>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}/levels/${levelId}`,
+      body,
+    );
+  }
+
+  deleteSkillLevel(companyId: number, branchId: number, technologyId: number, skillId: number, levelId: number) {
+    return this.client.delete(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/technologies/${technologyId}/skills/${skillId}/levels/${levelId}`,
+    );
+  }
+
+  createTeam(companyId: number, branchId: number, specialityId: number, body: TeamCreateRequest) {
+    return this.client.post<Team>(
+      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams`,
+      body,
+    );
+  }
+
   listTeams(
     companyId: number,
     branchId: number,
@@ -537,13 +583,6 @@ export class CompaniesApi {
     return this.client.get<PageResponse<Team>>(
       `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams`,
       query,
-    );
-  }
-
-  createTeam(companyId: number, branchId: number, specialityId: number, body: TeamCreateRequest) {
-    return this.client.post<Team>(
-      `/companies/v0/companies/${companyId}/branches/${branchId}/specialities/${specialityId}/teams`,
-      body,
     );
   }
 

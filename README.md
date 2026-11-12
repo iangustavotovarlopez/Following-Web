@@ -114,13 +114,24 @@ también cuando están vacías. Los formularios usan modales y conservan la
 compañía, branch, tecnología y habilidad de la fila seleccionada, sin pedir
 selectores adicionales. Los modales se muestran mediante portal y las
 respuestas de un contexto anterior no alteran el nuevo contexto.
-Crear una habilidad recarga solo sus habilidades; crear un nivel recarga solo
-los niveles de esa habilidad, sin cerrar sus detalles. Cambiar compañía,
+Tecnologías, habilidades y niveles incluyen acciones de **Editar** y
+**Eliminar**. La edición abre un modal precargado: nombre, descripción y estado
+para habilidades; nombre, número y estado para niveles. Los padres se conservan.
+Eliminar pide confirmación y realiza una baja lógica (`isActive=false`), sin
+borrar descendientes ni asignaciones personales. Los inactivos siguen visibles,
+con eliminar deshabilitado en habilidades/niveles y opción de reactivar al editar.
+El número de nivel sigue aceptando cero y exige un entero no negativo; al editar
+otro campo no se reenvía un número que no cambió.
+Crear, editar o desactivar una habilidad recarga solo sus habilidades; las
+mutaciones de un nivel recargan solo los niveles de esa habilidad, sin cerrar
+sus detalles. Cambiar compañía,
 branch o filtros de tecnologías cierra los detalles desplegados.
 Estos catálogos se trasladaron desde **Additional catalogs**, que conserva
 entregables y asignación de miembros; no se duplican los formularios.
-Se reutilizan los GET/POST existentes de skills y levels, sin cambios de API,
-base de datos ni contratos Android.
+Se reutilizan los GET/POST existentes y se añaden PATCH/DELETE de skills y levels.
+Las rutinas de escritura correspondientes se incluyen en ambos V1 del backend
+y deben estar instaladas antes de utilizar estas acciones. Los contratos que
+consume Android no cambian; su interfaz actual no administra estos catálogos.
 
 Cada tabla de detalle incluye **Añadir**, que abre un modal para asignar un rol,
 una especialidad o una tecnología al colaborador de esa fila. El modal muestra
