@@ -23,6 +23,7 @@ import { ModalActions, ResourceModal } from '../../../../shared/components/resou
 import { RowActions } from '../../../../shared/components/row-actions';
 import { useGlobalCompany } from '../../../../app/providers/company-context';
 import { SpecialitiesTab } from './specialities-tab';
+import { CatalogDetailsToggle, TechnologySkillsTable } from './technology-skills-table';
 
 const pagination = { page: 1, pageSize: 100 };
 type ResourceTab = 'companies' | 'branches' | 'technologies' | 'specialities';
@@ -471,6 +472,16 @@ function TechnologiesTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [expandedTechnologies, setExpandedTechnologies] = useState<Set<number>>(new Set());
+
+  function toggleDetails(id: number) {
+    setExpandedTechnologies((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const columns: TableColumn<Technology>[] = [
     { key: 'code', label: 'Código', render: (item) => item.code },
@@ -480,10 +491,15 @@ function TechnologiesTab() {
       key: 'actions',
       label: 'Acciones',
       render: (item) => (
-        <RowActions
-          onDelete={() => void deleteTechnology(item)}
-          onEdit={() => openTechnologyModal(item)}
-        />
+        <div className="row-actions">
+          <RowActions
+            onDelete={() => void deleteTechnology(item)}
+            onEdit={() => openTechnologyModal(item)}
+          />
+          <CatalogDetailsToggle expanded={expandedTechnologies.has(item.id)}
+            controls={`technology-${item.id}-skills`} label={`habilidades de ${item.name}`}
+            onClick={() => toggleDetails(item.id)} />
+        </div>
       ),
     },
   ];
@@ -545,6 +561,7 @@ function TechnologiesTab() {
       <form className="management-filters" onSubmit={(event) => {
         event.preventDefault();
         setFilters({ code: filterDraft.code.trim(), name: filterDraft.name.trim() });
+        setExpandedTechnologies(new Set());
       }}>
         <Field label="Código" value={filterDraft.code} onChange={(event) => setFilterDraft({ ...filterDraft, code: event.target.value })} />
         <Field label="Nombre" value={filterDraft.name} onChange={(event) => setFilterDraft({ ...filterDraft, name: event.target.value })} />
@@ -553,6 +570,7 @@ function TechnologiesTab() {
           <button className="button secondary" type="button" onClick={() => {
             setFilterDraft({ code: '', name: '' });
             setFilters({ code: '', name: '' });
+            setExpandedTechnologies(new Set());
           }}>Limpiar</button>
         </div>
       </form>
@@ -566,6 +584,10 @@ function TechnologiesTab() {
         error={error}
         rows={data}
         rowKey={(item) => item.id}
+        renderExpandedRow={(item) => expandedTechnologies.has(item.id) && companyId && branchId
+          ? <TechnologySkillsTable key={`${companyId}:${branchId}:${item.id}`}
+              companyId={companyId} branchId={branchId} technology={item} />
+          : null}
       />
       <ResourceModal open={modalOpen} title={editingTechnology ? 'Editar technology' : 'Nueva technology'} onClose={() => setModalOpen(false)}>
         <form className="modal-form" onSubmit={(event) => void submitTechnology(event)}>

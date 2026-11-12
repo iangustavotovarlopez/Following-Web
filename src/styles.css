@@ -635,6 +635,7 @@ button {
 
 .collaborator-inline-details .resource-section,
 .team-inline-details .resource-section,
+.technology-inline-details .resource-section,
 .project-inline-details .resource-section {
   min-width: 0;
   border-radius: 10px;
@@ -643,6 +644,7 @@ button {
 
 .collaborator-inline-details .section-heading,
 .team-inline-details .section-heading,
+.technology-inline-details .section-heading,
 .project-inline-details .section-heading {
   padding: 16px;
   flex-direction: row;
@@ -656,12 +658,14 @@ button {
 
 .collaborator-inline-details h2,
 .team-inline-details h2,
+.technology-inline-details h2,
 .project-inline-details h2 {
   font-size: 1rem;
 }
 
 .collaborator-inline-details .section-heading .muted,
 .team-inline-details .section-heading .muted,
+.technology-inline-details .section-heading .muted,
 .project-inline-details .section-heading .muted {
   font-size: 0.8rem;
 }
@@ -670,6 +674,8 @@ button {
 .collaborator-inline-details td,
 .team-inline-details th,
 .team-inline-details td,
+.technology-inline-details th,
+.technology-inline-details td,
 .project-inline-details th,
 .project-inline-details td {
   padding: 10px 16px;
@@ -677,6 +683,7 @@ button {
 
 .collaborator-inline-details .empty-state,
 .team-inline-details .empty-state,
+.technology-inline-details .empty-state,
 .project-inline-details .empty-state {
   padding: 20px 16px;
 }

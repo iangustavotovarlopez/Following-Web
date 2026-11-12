@@ -44,8 +44,11 @@ API para:
 - Ambientes y metadata asignados a servicios.
 
 La sección de staffing carga los estados desde `/staffing/v0/states` para el
-selector de alta y permite filtrar las solicitudes por los IDs de proyecto,
-periodo, subperiodo, sección, fracción, especialidad y estado. La vista de
+selector de alta y permite filtrar las solicitudes por periodo, subperiodo,
+sección, fracción, especialidad y estado, dentro de la compañía y branch
+globales. **Nuevo +** abre el modal del agrupador sin texto de solicitud,
+proyecto ni capacidad.
+La vista de
 detalle de proyecto consume las fechas que devuelve la API dentro de la
 planeación, sin volver a consultar cada catálogo de periodos y secciones.
 
@@ -66,9 +69,10 @@ usan la compañía global. Technologies, especialidades, skills, niveles,
 equipos, entregables y sus relaciones usan también la branch global, sin
 selectores locales duplicados. Cambiar ese contexto reinicia los filtros,
 formularios y selecciones dependientes para evitar mezclar registros.
-El alta de staffing consulta las especialidades de la branch global únicamente
-cuando el proyecto pertenece a la compañía seleccionada; su listado conserva
-los filtros propios de solicitudes y el ámbito de compañía.
+El alta de staffing consulta los periodos de la compañía y las especialidades
+de la branch global, sin depender de seleccionar un proyecto. El API filtra
+compañía y branch antes de paginar; no se filtra una página usando un catálogo
+parcial de proyectos.
 Los catálogos independientes de branch conservan su ámbito original y los
 campos de compañía en formularios de alta/edición siguen permitiendo asignar o
 cambiar la relación del registro, salvo la compañía de un proyecto existente,
@@ -97,6 +101,26 @@ y contraer los roles, especialidades y tecnologías debajo de la misma fila.
 Las tablas anidadas consultan la API al abrirse, muestran estados de carga,
 errores y relaciones vacías, y no abren otra ventana. Cambiar la compañía o
 aplicar filtros cierra los detalles desplegados.
+
+En Companies → Technologies, el botón **Más detalles** de cada tecnología
+despliega una tabla de sus **Habilidades**, con nombre, descripción y estado.
+Cada habilidad tiene su propio botón de detalles para mostrar una segunda
+tabla anidada de **Niveles de habilidad**, con nombre, número y estado.
+Las consultas cargan todas las páginas del catálogo al abrir el detalle,
+muestran errores con opción de reintentar y distinguen un resultado vacío.
+
+**Nuevo +** permite crear habilidades y niveles desde sus respectivas tablas,
+también cuando están vacías. Los formularios usan modales y conservan la
+compañía, branch, tecnología y habilidad de la fila seleccionada, sin pedir
+selectores adicionales. Los modales se muestran mediante portal y las
+respuestas de un contexto anterior no alteran el nuevo contexto.
+Crear una habilidad recarga solo sus habilidades; crear un nivel recarga solo
+los niveles de esa habilidad, sin cerrar sus detalles. Cambiar compañía,
+branch o filtros de tecnologías cierra los detalles desplegados.
+Estos catálogos se trasladaron desde **Additional catalogs**, que conserva
+entregables y asignación de miembros; no se duplican los formularios.
+Se reutilizan los GET/POST existentes de skills y levels, sin cambios de API,
+base de datos ni contratos Android.
 
 Cada tabla de detalle incluye **Añadir**, que abre un modal para asignar un rol,
 una especialidad o una tecnología al colaborador de esa fila. El modal muestra
@@ -194,6 +218,60 @@ Los componentes compartidos `ManagementTable`, `RowActions`, `ResourceModal` y
 mismo comportamiento. Los formularios usan `Field`, `SelectField` y
 `SubmitButton`; las operaciones anidadas pueden conservar `operation-form`
 cuando corresponda.
+
+## Solicitudes y asignaciones de staffing
+
+La solicitud es el agrupador: contiene la jerarquía temporal, especialidad,
+estado y fecha de registro. El texto de solicitud pertenece a cada asignación.
+La compañía se obtiene del periodo y la
+branch de la especialidad. El icono de asignaciones despliega debajo de la fila
+una tabla con historial, proyectos, tecnologías, tipos, roles y capacidad.
+**Añadir +** está disponible también cuando no existen asignaciones.
+
+Cada asignación exige colaborador, proyecto, tecnología, tipo, rol, solicitud
+no vacía y capacidad manual **mayor que cero** (mínimo `0.01`, máximo `100`,
+hasta dos decimales). Los colaboradores y proyectos se consultan por la compañía
+del agrupador. Después de seleccionar colaborador, se recorren todas las páginas
+de sus tecnologías asignadas y se muestran solo sus relaciones activas de la
+branch del staffing; para altas y reactivaciones la tecnología también debe
+estar activa. Cambiar colaborador limpia la tecnología anterior. Sin una
+relación elegible, el formulario informa el motivo y no permite guardar.
+El backend vuelve a validar esa relación: no basta con modificar el selector.
+La búsqueda del colaborador es local por código o nombre completo desde tres
+caracteres, recorriendo todas las páginas. Los nombres siguen separados en API.
+Los catálogos no dependen de un proyecto previamente elegido.
+
+Las asignaciones pueden filtrarse por proyecto y tecnología y ocultar inactivas.
+La tabla carga el historial completo; los filtros de presentación no reducen
+los datos usados para validar la capacidad. El límite de 100% es por
+colaborador y solicitud, incluyendo todos los proyectos y tecnologías.
+No se divide por proyecto ni se calcula a partir de la capacidad del tipo.
+La API vuelve a validar la suma bajo bloqueo de la solicitud para concurrencia.
+
+El lápiz abre un modal de edición; solicitud, proyecto, tecnología, tipo, rol,
+capacidad y actividad son editables. Colaborador y staffing padre permanecen inmutables.
+PATCH envía solo los campos realmente cambiados. Corregir capacidad o desactivar
+no exige elegibilidad de reactivación; reactivar o cambiar referencias activas sí.
+Cambiar la tecnología también exige su relación personal activa, incluso
+en una asignación inactiva. La referencia histórica puede mantenerse para
+corregir texto/capacidad o desactivar sin cambiar referencias.
+La relación completa incluye proyecto y tecnología: los duplicados activos
+se rechazan y POST reutiliza una relación inactiva exacta con la nueva capacidad.
+No se fusionan asignaciones distintas mediante PATCH.
+
+La baja se confirma y es lógica. Mutaciones exitosas refrescan el detalle sin
+cerrar la fila, mediante los eventos existentes del cliente HTTP. Los modales
+de asignación usan portal para no quedar atrapados en la tabla anidada.
+Cambiar compañía/branch cierra los formularios y detalles del ámbito anterior;
+las respuestas antiguas no actualizan el nuevo contexto.
+
+Se requieren backend y V1 de MySQL/PostgreSQL actualizados junto con Web.
+Una API antigua sin la compañía/branch de la solicitud muestra un aviso y no
+permite asignar. Los V1 modificados no actualizan una base ya creada: preservar
+datos antes de cualquier recreación y no inventar tecnologías para migrar historia.
+Al conservar una base existente, trasladar el texto del agrupador a sus
+asignaciones y corregir explícitamente los porcentajes cero antes de aplicar
+las nuevas restricciones; no sustituirlos automáticamente por `0.01`.
 
 La estructura está organizada por funcionalidades y capas:
 

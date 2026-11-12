@@ -36,8 +36,6 @@ import {
   type Period,
   type PeriodPatchRequest,
   type Section,
-  type Skill,
-  type SkillLevel,
   type Subperiod,
   type Team,
   type TeamPatchRequest,
@@ -210,7 +208,7 @@ export function AdditionalCatalogsSection() {
         <div>
           <p className="eyebrow">Catálogos</p>
           <h2>Additional catalogs</h2>
-          <p className="muted">Administra skills, entregables y miembros de equipos.</p>
+          <p className="muted">Administra entregables y miembros de equipos.</p>
         </div>
       </div>
       {(!selectedCompanyId || !selectedBranchId) && (
@@ -219,8 +217,6 @@ export function AdditionalCatalogsSection() {
         </div>
       )}
       <div className="resource-grid additional-catalog-grid">
-        <SkillsSection key={`skills:${selectedCompanyId}:${selectedBranchId}`} revision={catalogRevision} onSaved={refreshCatalogs} />
-        <SkillLevelsSection key={`levels:${selectedCompanyId}:${selectedBranchId}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <DeliverablesSection key={`deliverables:${selectedCompanyId}:${selectedBranchId}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <TeamMembersSection
           key={`members:${selectedCompanyId}:${selectedBranchId}`}
@@ -480,94 +476,6 @@ function FractionsSection({ revision, onSaved }: {
         <Field label="Fin" type="date" value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} required />
       </>}
       create={(form) => companyId && periodId && subperiodId && sectionId ? companiesApi.createFraction(companyId, periodId, subperiodId, sectionId, form) : Promise.resolve(null)}
-      onSaved={onSaved}
-    />
-  );
-}
-
-function SkillsSection({ revision, onSaved }: {
-  revision: number;
-  onSaved: () => void;
-}) {
-  const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
-  const [technologyId, setTechnologyId] = useState<Id>();
-  const technologies = useOptions(`skill-technologies:${companyId}:${branchId}:${revision}`, () =>
-    companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
-  );
-  const load = useScopedList(`skills:${companyId}:${branchId}:${technologyId}:${revision}`, () =>
-    companyId && branchId && technologyId ? companiesApi.listSkills(companyId, branchId, technologyId, pagination) : Promise.resolve(null),
-  );
-  const columns: TableColumn<Skill>[] = [
-    { key: 'name', label: 'Nombre', render: (item) => item.name },
-    { key: 'description', label: 'Descripción', render: (item) => item.description ?? '—' },
-    { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
-  ];
-  return (
-    <ManagedResourceSection
-      title="Habilidades"
-      description="Consulta y registra habilidades para una technology."
-      columns={columns}
-      rows={load.data}
-      loading={load.loading}
-      error={load.error}
-      enabled={Boolean(companyId && branchId && technologyId)}
-      filterFields={<>
-        <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => setTechnologyId(idOf(event.target.value))} disabled={!branchId} required />
-      </>}
-      initialForm={{ name: '', description: '' }}
-      renderFields={(form, setForm) => <>
-        <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-        <Field label="Descripción" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-      </>}
-      create={(form) => companyId && branchId && technologyId ? companiesApi.createSkill(companyId, branchId, technologyId, form) : Promise.resolve(null)}
-      onSaved={onSaved}
-    />
-  );
-}
-
-function SkillLevelsSection({ revision, onSaved }: {
-  revision: number;
-  onSaved: () => void;
-}) {
-  const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
-  const [technologyId, setTechnologyId] = useState<Id>();
-  const [skillId, setSkillId] = useState<Id>();
-  const technologies = useOptions(`level-technologies:${companyId}:${branchId}:${revision}`, () =>
-    companyId && branchId ? companiesApi.listTechnologies(companyId, branchId, pagination) : Promise.resolve(null),
-  );
-  const skills = useOptions(`level-skills:${companyId}:${branchId}:${technologyId}:${revision}`, () =>
-    companyId && branchId && technologyId ? companiesApi.listSkills(companyId, branchId, technologyId, pagination) : Promise.resolve(null),
-  );
-  const load = useScopedList(`levels:${companyId}:${branchId}:${technologyId}:${skillId}:${revision}`, () =>
-    companyId && branchId && technologyId && skillId ? companiesApi.listSkillLevels(companyId, branchId, technologyId, skillId, pagination) : Promise.resolve(null),
-  );
-  const columns: TableColumn<SkillLevel>[] = [
-    { key: 'name', label: 'Nombre', render: (item) => item.name },
-    { key: 'number', label: 'Número', render: (item) => item.number },
-    { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
-  ];
-  return (
-    <ManagedResourceSection
-      title="Niveles de habilidad"
-      description="Consulta y registra niveles para una habilidad."
-      columns={columns}
-      rows={load.data}
-      loading={load.loading}
-      error={load.error}
-      enabled={Boolean(companyId && branchId && technologyId && skillId)}
-      filterFields={<>
-        <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => {
-          setTechnologyId(idOf(event.target.value));
-          setSkillId(undefined);
-        }} disabled={!branchId} required />
-        <SelectField label="Habilidad" value={skillId ?? ''} options={optionsOf(skills, (item) => item.name)} onChange={(event) => setSkillId(idOf(event.target.value))} disabled={!technologyId} required />
-      </>}
-      initialForm={{ name: '', number: 0 }}
-      renderFields={(form, setForm) => <>
-        <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-        <Field label="Número" type="number" min="0" value={form.number} onChange={(event) => setForm({ ...form, number: Number(event.target.value) })} required />
-      </>}
-      create={(form) => companyId && branchId && technologyId && skillId ? companiesApi.createSkillLevel(companyId, branchId, technologyId, skillId, form) : Promise.resolve(null)}
       onSaved={onSaved}
     />
   );

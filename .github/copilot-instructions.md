@@ -69,6 +69,24 @@ before changing it.
   duplicates; metadata reactivation updates `detail`. Staffing validates all
   references and the full period hierarchy; combined filters use AND and
   creation state IDs come from the staffing-state catalog.
+- Staffing requests are grouping records without request text/project/capacity. Company
+  comes from the period and branch from the speciality. Each assignment
+  requires non-blank request text, project and technology: project/collaborator from that company,
+  technology from that company and speciality branch. Identity includes both
+  new references; reactivate exact inactive relationships without duplicates.
+- Filter assignment technology choices by the selected collaborator's active
+  technology relationships and staffing branch, loading all pages. Clear the
+  selection when collaborator changes; block saving without an eligible
+  relationship. Creation/reactivation/active-reference or technology changes
+  also validate that relationship in backend; never create it automatically.
+- Assignment capacity is manual, greater than zero and at most 100, minimum
+  0.01 with up to two decimals. Reject zero in frontend and backend. Its active
+  aggregate is at most 100 per collaborator/request across all projects and
+  technologies, not per project or derived from the type. Presentation filters
+  must not hide assignments from this calculation. Preserve history and
+  omitted PATCH fields; collaborator/parent staffing cannot change. Request
+  text is editable and non-blank. Text/capacity-only corrections and
+  deactivation preserve historical references without reactivation eligibility.
 - Preserve documented requirement/scope/assignment links and optional
   references. Do not invent capacity, percentage, or transition rules from
   examples or apply a generic inactive-state rule to every resource.
@@ -104,15 +122,21 @@ before changing it.
   must not acquire an unnecessary branch dependency. Branch-scoped catalogs
   and assignments use the global branch within the correct company.
 - Standalone detail pages retain their own scoped selectors and must not
-  require the dashboard's context provider. Staffing specialities use global
-  branch only when the project belongs to the selected company.
+  require the dashboard's context provider. Staffing request creation uses
+  global company/branch without a project selector; assignment dialogs use
+  the actual request's company/branch and require project/technology.
 - Preserve tabs, compact filters, `Nuevo +`, create/edit modals, edit/delete
   icons and deletion confirmation. Use `ManagementTable`, `RowActions`,
   `ResourceModal`, `ModalActions`, `Field`, `SelectField`, and `SubmitButton`.
-- Collaborator/team/project details expand under the selected row instead of
+- Collaborator/team/project/technology details expand under the selected row instead of
   opening another window. Relationship addition remains available for empty
   tables and refreshes details without closing the row. Exclude ineligible
   inactive collaborators/teams from new-assignment flows.
+- In Companies -> Technologies, skills expand under their technology and
+  levels under their skill. Keep Nuevo + and create modals available for
+  empty catalogs. Reuse existing scoped GET/POST endpoints and load all
+  detail pages. Refresh only the mutated collection so level creation does
+  not close its parent skill. Do not restore standalone skills/levels panels.
 - Display state names with an initial capital per word and spaces, preserving
   IDs. Display branch from relation responses without fetching every catalog.
   Missing dates/branch information is shown explicitly, not fabricated.
