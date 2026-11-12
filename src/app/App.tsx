@@ -10,6 +10,7 @@ import {
 } from '../features/companies/presentation/pages/nested-resource-management';
 import { AdvancedRelationshipsManagement } from '../features/relations/presentation/pages/advanced-relationships-management';
 import { StaffingSection } from '../features/staffing/presentation/pages/staffing-section';
+import { RequirementsSection } from '../features/requirements/presentation/pages/requirements-section';
 import { PeopleSection } from './people-section';
 import { CompanyProvider, GlobalCompanySelector, GlobalBranchSelector, InitialScopeModal } from './providers/company-context';
 
@@ -63,6 +64,7 @@ export function App() {
           <PeopleSection />
           <ProjectsSection />
           <StaffingSection />
+          <RequirementsSection />
           <ServicesSection />
           <PlanningSection />
           <AdditionalCatalogsSection />

@@ -90,6 +90,22 @@ before changing it.
 - Preserve documented requirement/scope/assignment links and optional
   references. Do not invent capacity, percentage, or transition rules from
   examples or apply a generic inactive-state rule to every resource.
+- Requirements use global company/Branch and a canonical project, inferred
+  from selected staffing or explicitly required without staffing. Always show
+  project id/code/name returned by API; keep context/project read-only on edit.
+- Preserve append-only requirements_staffing_assignments and selected scope
+  history. Staffing must match project/company/Branch; creation of selected
+  scopes creates requirements_requirement_scopes without assigning people or
+  roles. Filter collaborator_id by active personal scope assignments, not
+  staffing. Combine project/service.code/person filters with AND.
+- Keep Requirements/Scopes tabs, Nuevo +, edit/delete modals, logical deletion
+  confirmation and inline scope/staffing details. Existing links are checked
+  read-only; only eligible active entries can be added. Empty scope selection
+  is valid. Load all catalog/history pages and reset on context changes.
+- Scopes and services are global catalogs by schema. Use company/Branch to
+  select eligible scope deliverables; preserve historical references when
+  editing other fields. Service {id:null} and deliverable {id:null} clear their
+  optional references. Completion null preserves its date, not a clear action.
 
 ## API consumption
 

@@ -29,8 +29,9 @@ La vista inicial incluye tablas y formularios de alta para:
 - Collaborators.
 - Projects.
 - Services y sus catálogos.
+- Requirements y Scopes.
 
-Companies, Services, People y Proyectos organizan sus catálogos en pestañas. En esas
+Companies, Services, People, Proyectos y Requirements organizan sus catálogos en pestañas. En esas
 secciones, los filtros se muestran sobre la tabla, y las altas y ediciones se
 realizan desde modales con acciones por fila para editar o desactivar.
 
@@ -187,6 +188,57 @@ en la respuesta de la API, sin consultas adicionales de catálogos.
 Si la API desplegada todavía no incluye la branch, el detalle sigue mostrándose:
 la celda indica `No informado` y un aviso explica que se deben actualizar el
 backend y las rutinas V1. Este aviso no bloquea las asignaciones.
+
+## Requirements y Scopes
+
+**Requirements → Requirements** permite crear con **Nuevo +**, editar desde
+un modal precargado y eliminar con confirmación mediante baja lógica. El
+listado usa compañía/Branch globales y filtros combinados por proyecto,
+`service.code` parcial (mínimo tres caracteres) y persona asignada a un alcance
+(`requirement_assignments.collaborator_id` activo), no al staffing.
+La tabla siempre muestra el proyecto, además de descripción, servicio, estado,
+complejidad, fechas y actividad.
+
+El alta permite marcar alcances mediante checkboxes y seleccionar varias
+asignaciones de staffing elegibles del contexto. Si se selecciona staffing,
+el proyecto se obtiene de esas asignaciones; sin staffing debe elegirse un
+proyecto de la compañía. El API guarda siempre el proyecto canónico. La
+creación del requerimiento, sus alcances y sus relaciones de staffing es
+atómica. Marcar alcances crea `requirements_requirement_scopes` **sin**
+crear asignaciones personales ni inventar colaboradores o roles. También
+puede guardarse sin alcances y sin staffing indicando el proyecto.
+
+Editar mantiene compañía/Branch/proyecto de solo lectura, permite modificar
+los campos del requerimiento, reactivar y añadir scopes/staffing posteriores.
+Los vínculos existentes se muestran marcados y de solo lectura para conservar
+el historial; no se eliminan por desmarcar ni por enviar arrays vacíos.
+El servicio puede quitarse. La fecha de finalización puede corregirse, pero
+el contrato PATCH actual no permite borrar una fecha existente con `null`.
+El icono de **Más detalles** despliega debajo de la fila los alcances, incluidos
+los que muestran **Sin asignación**, y el historial de staffing.
+
+**Requirements → Scopes** administra el catálogo global `requirement_scopes`,
+con filtro por nombre, **Nuevo +**, edición y baja lógica confirmada.
+El modal contiene nombre, descripción, secuencia entera positiva y entregable
+opcional. Tecnología solo filtra el selector de entregables del contexto
+global; no es una nueva columna del scope. Un entregable histórico fuera del
+Branch actual puede conservarse o quitarse. Para elegir otro, se usa el
+contexto de su compañía/Branch. El API impide referencias incompatibles con
+requerimientos que ya utilizan el alcance.
+
+Los selectores cargan todas las páginas, muestran errores y permiten
+reintentar; no se interpretan fallos como catálogos vacíos. Los estados y
+complejidades se consultan desde Requirements y las referencias de servicios
+desde `servicesApi.listServices`, sin trasladar su ownership a Requirements.
+Las mutaciones refrescan la colección afectada, conservando detalles cuando
+corresponde; cambiar contexto o filtros reinicia las selecciones dependientes.
+
+Los endpoints y ambos V1 del backend deben estar instalados antes de usar el
+flujo. Para datos existentes, el antiguo FK directo de staffing debe copiarse
+a `requirements_staffing_assignments` y derivarse compañía/Branch/proyecto
+antes de eliminarlo; modificar V1 no actualiza automáticamente la base.
+Android todavía no tiene interfaz de Requirements y sus contratos actuales no
+cambian; estas operaciones son aditivas.
 
 ## Estándar de catálogos
 

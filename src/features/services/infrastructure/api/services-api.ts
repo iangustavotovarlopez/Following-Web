@@ -12,6 +12,12 @@ export interface Environment {
   isActive: boolean;
 }
 
+export interface ServiceSummary {
+  id: number;
+  code: string;
+  name: string;
+}
+
 export interface ServiceMetadata {
   id: number;
   code: string;
@@ -106,6 +112,10 @@ export interface ServiceMetadataRelation {
 
 export class ServicesApi {
   constructor(private readonly client: HttpClient = httpClient) {}
+
+  listServices(query: PaginationQuery & { code?: string } = {}) {
+    return this.client.get<PageResponse<ServiceSummary>>('/services/v0/services', query);
+  }
 
   listEnvironments(query: CatalogQuery = {}) {
     return this.client.get<PageResponse<Environment>>(
