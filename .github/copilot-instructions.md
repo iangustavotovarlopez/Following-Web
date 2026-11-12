@@ -102,6 +102,9 @@ before changing it.
   confirmation and inline scope/staffing details. Existing links are checked
   read-only; only eligible active entries can be added. Empty scope selection
   is valid. Load all catalog/history pages and reset on context changes.
+- Show the existing technology-scoped deliverables management in Requirements
+  -> Entregables, not Additional catalogs. Its Companies API ownership and
+  global company/Branch context remain unchanged.
 - Scopes and services are global catalogs by schema. Use company/Branch to
   select eligible scope deliverables; preserve historical references when
   editing other fields. Service {id:null} and deliverable {id:null} clear their

@@ -29,7 +29,7 @@ La vista inicial incluye tablas y formularios de alta para:
 - Collaborators.
 - Projects.
 - Services y sus catálogos.
-- Requirements y Scopes.
+- Requirements, Scopes y Entregables.
 
 Companies, Services, People, Proyectos y Requirements organizan sus catálogos en pestañas. En esas
 secciones, los filtros se muestran sobre la tabla, y las altas y ediciones se
@@ -189,7 +189,7 @@ Si la API desplegada todavía no incluye la branch, el detalle sigue mostrándos
 la celda indica `No informado` y un aviso explica que se deben actualizar el
 backend y las rutinas V1. Este aviso no bloquea las asignaciones.
 
-## Requirements y Scopes
+## Requirements, Scopes y Entregables
 
 **Requirements → Requirements** permite crear con **Nuevo +**, editar desde
 un modal precargado y eliminar con confirmación mediante baja lógica. El
@@ -225,6 +225,15 @@ global; no es una nueva columna del scope. Un entregable histórico fuera del
 Branch actual puede conservarse o quitarse. Para elegir otro, se usa el
 contexto de su compañía/Branch. El API impide referencias incompatibles con
 requerimientos que ya utilizan el alcance.
+
+**Requirements → Entregables** reúne la vista existente de consulta, alta y
+edición de entregables, con selección de tecnología de la compañía/Branch
+globales. Conserva nombre, descripción, secuencia y actividad, y refresca el
+listado después de guardar. Cambiar el contexto reinicia la tecnología y los
+formularios. Ya no se muestra en **Additional catalogs**, que conserva la
+gestión de miembros de equipos. La ubicación en Requirements no cambia los
+endpoints ni el ownership del recurso: sigue consumiendo `companiesApi` y la
+jerarquía compañía → Branch → tecnología → entregable.
 
 Los selectores cargan todas las páginas, muestran errores y permiten
 reintentar; no se interpretan fallos como catálogos vacíos. Los estados y

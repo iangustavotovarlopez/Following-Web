@@ -8,6 +8,7 @@ import { RowActions } from '../../../../shared/components/row-actions';
 import { SelectField } from '../../../../shared/components/select-field';
 import { projectsApi } from '../../../projects/infrastructure/api';
 import { collaboratorsApi } from '../../../collaborators/infrastructure/api';
+import { DeliverablesSection } from '../../../companies/presentation/pages/nested-resource-management';
 import { collaboratorFullName } from '../../../collaborators/presentation/collaborator-name';
 import { requirementPath, requirementsApi, type Requirement, type RequirementScopeLink, type StaffingOption } from '../../infrastructure/api/requirements-api';
 import { useRequirementCatalog, useRequirementMounted } from '../use-requirement-catalog';
@@ -16,21 +17,29 @@ import { RequirementScopesTab } from './requirement-scopes-tab';
 
 export function RequirementsSection() {
   const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
-  const [tab, setTab] = useState<'requirements' | 'scopes'>('requirements');
+  const [tab, setTab] = useState<'requirements' | 'scopes' | 'deliverables'>('requirements');
+  const tabs = [
+    { id: 'requirements', label: 'Requirements' },
+    { id: 'scopes', label: 'Scopes' },
+    { id: 'deliverables', label: 'Entregables' },
+  ] as const;
   return (
     <section className="resource-section companies-management">
       <div className="section-heading"><div><p className="eyebrow">Gestión</p><h2>Requirements</h2>
-        <p className="muted">Requerimientos de la compañía y Branch, y catálogo de alcances reutilizables.</p></div></div>
+        <p className="muted">Requerimientos de la compañía y Branch, alcances reutilizables y entregables por tecnología.</p></div></div>
       <div className="management-tabs" role="tablist" aria-label="Requirements">
-        {(['requirements', 'scopes'] as const).map((id) => <button key={id} type="button" role="tab" aria-selected={tab === id}
+        {tabs.map(({ id, label }) => <button key={id} type="button" role="tab" aria-selected={tab === id}
           className={tab === id ? 'management-tab active' : 'management-tab'} onClick={() => setTab(id)}>
-          {id === 'requirements' ? 'Requirements' : 'Scopes'}</button>)}
+          {label}</button>)}
       </div>
       <div className="management-tab-content" role="tabpanel">
         {tab === 'requirements' && (companyId && branchId
           ? <RequirementsTab key={`${companyId}:${branchId}`} companyId={companyId} branchId={branchId} />
           : <div className="empty-state">Selecciona compañía y Branch en la barra superior.</div>)}
         {tab === 'scopes' && <RequirementScopesTab key={`${companyId}:${branchId}`} companyId={companyId} branchId={branchId} />}
+        {tab === 'deliverables' && (companyId && branchId
+          ? <DeliverablesSection key={`deliverables:${companyId}:${branchId}`} />
+          : <div className="empty-state">Selecciona compañía y Branch en la barra superior.</div>)}
       </div>
     </section>
   );

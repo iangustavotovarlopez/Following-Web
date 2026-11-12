@@ -208,7 +208,7 @@ export function AdditionalCatalogsSection() {
         <div>
           <p className="eyebrow">Catálogos</p>
           <h2>Additional catalogs</h2>
-          <p className="muted">Administra entregables y miembros de equipos.</p>
+          <p className="muted">Administra miembros de equipos.</p>
         </div>
       </div>
       {(!selectedCompanyId || !selectedBranchId) && (
@@ -217,7 +217,6 @@ export function AdditionalCatalogsSection() {
         </div>
       )}
       <div className="resource-grid additional-catalog-grid">
-        <DeliverablesSection key={`deliverables:${selectedCompanyId}:${selectedBranchId}`} revision={catalogRevision} onSaved={refreshCatalogs} />
         <TeamMembersSection
           key={`members:${selectedCompanyId}:${selectedBranchId}`}
           revision={catalogRevision}
@@ -649,10 +648,9 @@ export function TeamsSection({ revision, onSaved }: {
   );
 }
 
-function DeliverablesSection({ revision, onSaved }: {
-  revision: number;
-  onSaved: () => void;
-}) {
+export function DeliverablesSection() {
+  const [revision, setRevision] = useState(0);
+  const onSaved = () => setRevision((current) => current + 1);
   const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
   const [technologyId, setTechnologyId] = useState<Id>();
   const technologies = useOptions(`deliverable-technologies:${companyId}:${branchId}:${revision}`, () =>
