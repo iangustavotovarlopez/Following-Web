@@ -43,10 +43,11 @@ export class HttpClient {
     return request;
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T | null> {
+  async post<T>(path: string, body?: unknown, affectedPaths: readonly string[] = []): Promise<T | null> {
     const response = await this.request<T>(path, { method: 'POST', body });
     this.getCache.clear();
     this.notifyMutation('POST', path);
+    for (const affectedPath of affectedPaths) this.notifyMutation('POST', affectedPath);
     return response;
   }
 

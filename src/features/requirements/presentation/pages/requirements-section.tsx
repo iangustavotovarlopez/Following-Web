@@ -67,7 +67,7 @@ function RequirementsTab({ companyId, branchId }: { companyId: number; branchId:
   useEffect(() => {
     function onScopeMutation(event: Event) {
       const mutation = (event as CustomEvent<ApiMutationDetail>).detail.path;
-      if (mutation.startsWith(`${path}/`) && /^\d+\/scopes\/\d+(?:\/(?:complete|assignments|state))?$/.test(mutation.slice(path.length + 1))) list.refresh();
+      if (mutation.startsWith(`${path}/`) && /^\d+\/scopes\/\d+(?:\/(?:complete|assignments|state|service_deliverable))?$/.test(mutation.slice(path.length + 1))) list.refresh();
     }
     window.addEventListener(API_MUTATION_EVENT, onScopeMutation);
     return () => window.removeEventListener(API_MUTATION_EVENT, onScopeMutation);
@@ -127,7 +127,7 @@ function RequirementsTab({ companyId, branchId }: { companyId: number; branchId:
   </div>;
 }
 
-function RequirementDetails({ requirement: r, companyId, branchId }: { requirement: Requirement; companyId: number; branchId: number }) {
+export function RequirementDetails({ requirement: r, companyId, branchId }: { requirement: Requirement; companyId: number; branchId: number }) {
   const path = requirementPath(companyId, branchId);
   const staffing = useRequirementCatalog(`${path}/${r.id}/staffing_assignments`, true,
     (page) => requirementsApi.staffing(companyId, branchId, r.id, { page, pageSize: 100 }),

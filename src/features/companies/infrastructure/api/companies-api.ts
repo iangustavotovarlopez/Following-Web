@@ -265,12 +265,14 @@ export interface Deliverable {
   description: string;
   isActive: boolean;
   sequence: number;
+  generatesService: boolean;
 }
 
 export interface DeliverableCreateRequest {
   name: string;
   description: string;
   sequence: number;
+  generatesService?: boolean;
 }
 
 export interface DeliverablePatchRequest {
@@ -278,6 +280,7 @@ export interface DeliverablePatchRequest {
   description?: string;
   sequence?: number;
   isActive?: boolean;
+  generatesService?: boolean;
 }
 
 export class CompaniesApi {

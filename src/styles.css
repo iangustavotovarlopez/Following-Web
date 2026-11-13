@@ -32,6 +32,109 @@ button {
   min-height: 100vh;
 }
 
+.main-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px clamp(20px, 5vw, 80px);
+  background: #172033;
+}
+
+.main-navigation a {
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #d7e1ef;
+  text-decoration: none;
+}
+
+.main-navigation a[aria-current="page"] {
+  color: #ffffff;
+  background: #284567;
+}
+
+.requirements-board-page {
+  padding: 24px clamp(16px, 3vw, 48px);
+}
+
+.requirements-board-columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(300px, 360px);
+  align-items: start;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 12px 0 24px;
+}
+
+.requirements-board-column {
+  padding: 16px;
+  border: 1px solid #d7e1ef;
+  border-radius: 12px;
+  background: #e9eef5;
+}
+
+.requirements-board-column > h3 {
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+}
+
+.requirement-board-card {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #d7e1ef;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(23, 32, 51, 0.06);
+  overflow-wrap: anywhere;
+}
+
+.requirement-board-card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.requirement-board-card h4 {
+  margin: 12px 0;
+}
+
+.requirement-board-card dl {
+  display: grid;
+  gap: 4px;
+}
+
+.requirement-board-card dt {
+  margin-top: 8px;
+  color: #728096;
+  font-size: 0.78rem;
+}
+
+.requirement-board-card dd {
+  margin: 0;
+}
+
+.requirement-board-card details {
+  margin: 16px 0;
+}
+
+.requirement-board-card summary {
+  cursor: pointer;
+}
+
+.requirement-board-card ul {
+  padding-left: 16px;
+}
+
+.requirement-board-card li p {
+  margin: 6px 0;
+}
+
+@media (max-width: 600px) {
+  .requirements-board-columns {
+    grid-auto-columns: minmax(270px, 85vw);
+  }
+}
+
 .app-header {
   display: flex;
   align-items: flex-start;

@@ -111,7 +111,8 @@ before changing it.
   Preserve personal/catalog history and null PATCH values. Render assignment
   dates per person in the nested assignment list. Never send dates/state when
   assigning: the backend generates dates and resolves the active initial state.
-  Reactivation preserves original dates/state; active duplicates fail.
+  Reactivation preserves original ID/dates and sets person/link to Asignado,
+  as every new assignment does; active duplicates fail.
   Show currentAssignment's composed person name in Personas asignadas and
   put assignment history in row Actions. Reassignment deactivates the prior
   assignment atomically; only one assignment is active per scope link.
@@ -120,6 +121,19 @@ before changing it.
   synchronize only that assignment. Only one scope may be En Progreso per
   requirement. Show API currentStage (progress or last finalized sequence)
   and refresh the root after scope mutations even without person filters.
+- General requirement state is derived and must not be submitted: Finalizado
+  requires at least one active scope and all finalized; otherwise priority is
+  Bloqueado > En Progreso > Asignado > Sin Asignar. Preserve general dates.
+- The standalone requirements-board page groups by project/collaborator/stage/
+  general state, with canonical cards and page-batched owners. Reuse scope
+  details; no per-card history loading or drag-and-drop state changes.
+- Expose deliverable generatesService explicitly in catalog forms. Finalize
+  and state->Finalizado use the same service modal when marked. Reuse an
+  existing requirement service; otherwise draft a new service and existing/
+  new group/applicationUnit. Select active metadata and HTTP/HTTPS URL <=2048.
+  Send one compound operation; no preliminary catalog POSTs. Preserve drafts
+  on error, invalidate related catalogs after success, and keep API/routines
+  aligned so normal finalization cannot bypass service registration.
 - Scopes and services are global catalogs by schema. Use company/Branch to
   select eligible scope deliverables; preserve historical references when
   editing other fields. Service {id:null} and deliverable {id:null} clear their

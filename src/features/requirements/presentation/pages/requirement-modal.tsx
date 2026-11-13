@@ -9,12 +9,9 @@ import { servicesApi } from '../../../services/infrastructure/api';
 import { collaboratorFullName } from '../../../collaborators/presentation/collaborator-name';
 import { requirementsApi, type Requirement, type Reference, type RequirementCatalog } from '../../infrastructure/api/requirements-api';
 import { useRequirementCatalog, useRequirementMounted } from '../use-requirement-catalog';
+import { localDate } from '../requirement-form-utils';
 
 const options = (rows: Reference[]) => rows.map((v) => ({ value: v.id, label: `${v.code ? `${v.code} · ` : ''}${v.name}` }));
-function localDate() {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-}
 function withCurrent(rows: Reference[], current: Reference | undefined) {
   return current && !rows.some((v) => v.id === current.id) ? [...rows, current] : rows;
 }
@@ -27,7 +24,7 @@ export function RequirementModal({ companyId, branchId, editing, onClose }: {
   const [draft, setDraft] = useState(() => ({ description: editing?.description ?? '',
     registeredDate: editing?.registeredDate ?? localDate(),
     completionDate: editing?.completionDate ?? '', projectId: editing ? String(editing.project.id) : '',
-    stateId: editing ? String(editing.state.id) : '', complexityId: editing ? String(editing.complexity.id) : '',
+    complexityId: editing ? String(editing.complexity.id) : '',
     serviceId: editing?.service ? String(editing.service.id) : '', isActive: String(editing?.isActive ?? true) }));
   const [selectedScopes, setSelectedScopes] = useState<Set<number>>(new Set());
   const [selectedStaffing, setSelectedStaffing] = useState<Set<number>>(new Set());
@@ -36,7 +33,6 @@ export function RequirementModal({ companyId, branchId, editing, onClose }: {
   const mounted = useRequirementMounted();
   const projects = useRequirementCatalog(`requirement-create-projects:${companyId}`, true,
     (page) => projectsApi.listProjects({ 'company.id': companyId, page, pageSize: 100 }));
-  const states = useRequirementCatalog('requirement-states', true, (page) => requirementsApi.states({ page, pageSize: 100 }));
   const complexities = useRequirementCatalog('requirement-complexities', true, (page) => requirementsApi.complexities({ page, pageSize: 100 }));
   const services = useRequirementCatalog('requirement-services', true, (page) => servicesApi.listServices({ page, pageSize: 100 }));
   const scopes = useRequirementCatalog(`requirement-scope-options:${companyId}:${branchId}`, true,
@@ -47,7 +43,7 @@ export function RequirementModal({ companyId, branchId, editing, onClose }: {
     (page) => editing ? requirementsApi.scopes(companyId, branchId, editing.id, { page, pageSize: 100 }) : Promise.resolve(null));
   const currentStaffing = useRequirementCatalog(`requirement-current-staffing:${editing?.id}`, Boolean(editing),
     (page) => editing ? requirementsApi.staffing(companyId, branchId, editing.id, { page, pageSize: 100 }) : Promise.resolve(null));
-  const catalogs = [projects, states, complexities, services, scopes, staffing, currentScopes, currentStaffing];
+  const catalogs = [projects, complexities, services, scopes, staffing, currentScopes, currentStaffing];
   const loading = catalogs.some((v) => v.loading);
   const errors = catalogs.map((v) => v.error).filter((v): v is string => v !== null);
   const existingScopeIds = new Set(currentScopes.items.map((v) => v.scope.id));
@@ -74,7 +70,6 @@ export function RequirementModal({ companyId, branchId, editing, onClose }: {
     if (saving) return;
     if (loading || errors.length || !draft.description.trim() || !draft.registeredDate
         || !projectId || !withCurrent(projects.items, editing?.project).some((v) => v.id === projectId)
-        || !withCurrent(states.items.filter((v) => v.isActive), editing?.state).some((v) => v.id === Number(draft.stateId))
         || !withCurrent(complexities.items.filter((v) => v.isActive), editing?.complexity).some((v) => v.id === Number(draft.complexityId))
         || (draft.serviceId && !withCurrent(services.items, editing?.service).some((v) => v.id === Number(draft.serviceId)))
         || [...selectedStaffing].some((id) => !staffing.items.some((v) => v.id === id && v.project.id === projectId))
@@ -88,7 +83,7 @@ export function RequirementModal({ companyId, branchId, editing, onClose }: {
     setSaving(true); setError(null);
     try {
       const body = { description: draft.description.trim(), registeredDate: draft.registeredDate, completionDate: draft.completionDate || undefined,
-        state: { id: Number(draft.stateId) }, complexity: { id: Number(draft.complexityId) },
+        complexity: { id: Number(draft.complexityId) },
         scopes: [...selectedScopes].map((id) => ({ id })), staffingAssignments: [...selectedStaffing].map((id) => ({ id })) };
       const result = editing
         ? await requirementsApi.patch(companyId, branchId, editing.id, { ...body, isActive: draft.isActive === 'true',
@@ -112,8 +107,8 @@ export function RequirementModal({ companyId, branchId, editing, onClose }: {
         onChange={(e) => setDraft({ ...draft, registeredDate: e.target.value })} />
       <Field label="Fecha de finalización" type="date" min={draft.registeredDate} value={draft.completionDate} disabled={saving}
         onChange={(e) => setDraft({ ...draft, completionDate: e.target.value })} />
-      <SelectField label="Estado" required value={draft.stateId} disabled={saving || states.loading}
-        options={activeCatalog(states.items, editing?.state)} onChange={(e) => setDraft({ ...draft, stateId: e.target.value })} />
+      <p className="muted">Estado general: <strong>{editing ? formatStateName(editing.state.name) : 'Sin Asignar'}</strong>.
+        Se calcula automáticamente desde los alcances; no se edita en este formulario.</p>
       <SelectField label="Complejidad" required value={draft.complexityId} disabled={saving || complexities.loading}
         options={activeCatalog(complexities.items, editing?.complexity)} onChange={(e) => setDraft({ ...draft, complexityId: e.target.value })} />
       <SelectField label="Servicio (opcional)" value={draft.serviceId} disabled={saving || services.loading}

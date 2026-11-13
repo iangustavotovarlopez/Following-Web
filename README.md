@@ -201,8 +201,12 @@ complejidad, fechas y actividad.
 **Etapa Actual** muestra el único alcance activo En Progreso o, si no hay
 ninguno, el último Finalizado por secuencia. Diseño Finalizado y Metadata
 Asignado siguen mostrando Diseño hasta iniciar Metadata. Sin etapas
-iniciadas muestra **Sin etapa iniciada**; no se calcula desde las fechas ni
-se cambia automáticamente el estado general del requerimiento.
+iniciadas muestra **Sin etapa iniciada**; no se calcula desde las fechas.
+El **estado general** es de solo lectura y se actualiza automáticamente:
+Finalizado solo con al menos un alcance activo y todos Finalizados;
+en otro caso Bloqueado > En Progreso > Asignado > Sin Asignar. Sin alcances
+activos queda Sin Asignar. El formulario no consulta ni envía un estado
+general editable, y no inventa una fecha general de finalización.
 
 El alta permite marcar alcances mediante checkboxes y seleccionar varias
 asignaciones de staffing elegibles del contexto. Si se selecciona staffing,
@@ -242,10 +246,11 @@ conserva; el formulario no presenta `null` como borrado.
 
 Asignar muestra colaboradores no inactivos de la compañía y roles activos.
 Solo envía referencias de colaborador/rol: el servidor registra internamente
-la fecha y resuelve Asignado desde su catálogo, sin ID fijo; una persona
-nueva de un alcance En Progreso/Bloqueado hereda ese estado.
+la fecha y resuelve Asignado desde su catálogo, sin ID fijo.
+Asignar o reactivar cambia siempre a **Asignado** tanto la persona como
+el alcance, incluso si antes estaba En Progreso/Bloqueado.
 Se rechaza el duplicado activo; reactivar una asignación inactiva conserva
-ID, fechas y estado. Solo puede existir una asignación activa por alcance:
+ID y fechas; las demás filas históricas conservan su estado. Solo puede existir una asignación activa por alcance:
 reasignar desactiva la anterior en la misma transacción. **Ver historial de
 asignaciones** despliega las personas, roles,
 estados, fecha de asignación (`assignedDate`), registro y finalización,
@@ -271,12 +276,55 @@ requerimientos que ya utilizan el alcance.
 
 **Requirements → Entregables** reúne la vista existente de consulta, alta y
 edición de entregables, con selección de tecnología de la compañía/Branch
-globales. Conserva nombre, descripción, secuencia y actividad, y refresca el
+globales. Conserva nombre, descripción, secuencia y actividad, añade la
+marca **Genera servicio al finalizar** (`generatesService`) y refresca el
 listado después de guardar. Cambiar el contexto reinicia la tecnología y los
 formularios. Ya no se muestra en **Additional catalogs**, que conserva la
 gestión de miembros de equipos. La ubicación en Requirements no cambia los
 endpoints ni el ownership del recurso: sigue consumiendo `companiesApi` y la
 jerarquía compañía → Branch → tecnología → entregable.
+
+### Tablero independiente
+
+La navegación principal permite abrir **Tablero de requerimientos**
+(`?view=requirements-board`) sin las demás secciones del panel.
+Cambiar de página dentro de la navegación conserva compañía/Branch;
+Atrás/Adelante restaura la página. Una apertura directa solicita el contexto
+global habitual.
+Las tarjetas muestran proyecto, descripción, estado general, Etapa Actual,
+personas asignadas, complejidad, servicio y fechas. **Responsables por alcance**
+detalla cada persona/rol, estado y fecha de asignación; **Ver alcances e
+historial** reutiliza las acciones del detalle.
+El selector agrupa por proyecto, colaborador, etapa/scope o estado general;
+se mantienen filtros AND por proyecto, persona y `service.code`.
+Con varios responsables, la tarjeta aparece una vez por colaborador.
+Consume `/requirements/board`, con responsables en un lote por página,
+no solicitudes de historial por tarjeta. Carga todas las páginas, permite
+actualizar/reintentar y no oculta errores como listas vacías.
+No hay drag-and-drop ni edición del estado general.
+
+### Servicio al finalizar diseño
+
+Marca explícitamente en Entregables el catálogo que genera servicio;
+no se infiere por llamarse Diseño/API. **Finalizar** y **Cambiar estado →
+Finalizado** abren el mismo modal para estos entregables.
+Si el requerimiento ya tiene servicio, se muestra de solo lectura y se
+reutiliza obligatoriamente. Si no, el formulario registra el servicio con
+código, nombre, fechas, grupo y unidad aplicativa; grupo/unidad pueden
+seleccionarse activos o crearse con **Nuevo +** dentro del mismo formulario.
+Las altas inline son borradores: no ejecutan POSTs antes de guardar.
+Debe elegirse una metadata activa y una URL HTTP/HTTPS hasta 2048 caracteres.
+La API compuesta guarda esa misma URL en el alcance y en el detalle de la
+relación servicio/metadata; reutiliza su ID y reactiva una relación inactiva,
+actualizando también una relación activa sin duplicarla.
+Guardar registra todo y finaliza alcance/responsable vigente atómicamente;
+cancelar o un error no deja catálogos/servicios parciales.
+Las colecciones de grupos/unidades/servicios se invalidan después del éxito.
+La API normal de finalización impide saltarse esta operación. Si un backend
+antiguo no devuelve `generatesService`, Web lo informa y bloquea la
+finalización hasta actualizar los contratos.
+El botón genérico **Guardar URL** mantiene su contrato de corrección solo
+del vínculo; la operación compuesta actualiza también metadata.
 
 Los selectores cargan todas las páginas, muestran errores y permiten
 reintentar; no se interpretan fallos como catálogos vacíos. Los estados y
@@ -292,6 +340,11 @@ antes de eliminarlo; modificar V1 no actualiza automáticamente la base.
 El servidor también debe tener las columnas `is_active` del vínculo y
 `assigned_date` de la asignación, con backfill histórico explícito si ya hay
 datos; no rellenar fechas antiguas con el día del despliegue.
+Estos cambios requieren también `deliverables.generates_service`,
+`services_service_metadata.detail` de 2048 caracteres, las nuevas rutinas
+de tablero/finalización compuesta y estados generales derivados. Preservar
+IDs legacy y aprobar el backfill histórico antes del despliegue; marcar
+deliberadamente los entregables generadores, sin inferencias automáticas.
 Android todavía no tiene interfaz de Requirements y sus contratos actuales no
 cambian; estas operaciones son aditivas.
 

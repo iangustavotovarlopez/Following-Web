@@ -390,7 +390,7 @@ function ServiceMetadataSection({ metadata }: { metadata: ServiceMetadata[] }) {
       <BaseForm onSubmit={submit}>
         <Field label="ID del servicio" type="number" min="1" value={serviceId} onChange={(event) => setServiceId(event.target.value)} required />
         <SelectField label="Metadata" value={metadataId ?? ''} options={optionsOf(metadata, (item) => item.name)} onChange={(event) => setMetadataId(idOf(event.target.value))} required />
-        <Field label="Detalle" value={detail} onChange={(event) => setDetail(event.target.value)} required />
+        <Field label="Detalle" maxLength={2048} value={detail} onChange={(event) => setDetail(event.target.value)} required />
         <SubmitButton loading={action.loading} disabled={!serviceId || !metadataId || !detail.trim()}>Asignar metadata</SubmitButton>
         <ActionMessage error={action.error} result={action.result} />
       </BaseForm>

@@ -10,15 +10,13 @@ import { collaboratorsApi } from '../../../collaborators/infrastructure/api';
 import { collaboratorFullName } from '../../../collaborators/presentation/collaborator-name';
 import { requirementPath, requirementsApi, type Requirement, type RequirementScopeLink, type ScopeAssignment } from '../../infrastructure/api/requirements-api';
 import { useRequirementCatalog, useRequirementMounted } from '../use-requirement-catalog';
+import { validDeliverableUrl as validUrl } from '../requirement-form-utils';
+import { ServiceDeliverableModal } from './service-deliverable-modal';
 
 interface Context { companyId: number; branchId: number; requirement: Requirement }
-type Modal = { kind: 'edit' | 'url' | 'assign' | 'state'; row: RequirementScopeLink };
+type Modal = { kind: 'edit' | 'url' | 'assign' | 'state' | 'service'; row: RequirementScopeLink };
 const normalizedState = (name: string) => name.trim().toLowerCase();
 const errorMessage = (cause: unknown) => cause instanceof Error ? cause.message : 'No se pudo completar la operación.';
-function validUrl(value: string) {
-  try { const url = new URL(value); return value.length <= 2048 && !/\s/.test(value) && ['http:', 'https:'].includes(url.protocol); }
-  catch (cause) { if (cause instanceof TypeError) return false; throw cause; }
-}
 function Action({ label, disabled, onClick, children, expanded, controls }: {
   label: string; disabled?: boolean; onClick: () => void; children: ReactNode; expanded?: boolean; controls?: string;
 }) {
@@ -40,6 +38,11 @@ export function RequirementScopeLinksTable({ companyId, branchId, requirement }:
     const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next;
   });
   async function act(row: RequirementScopeLink, operation: 'delete' | 'complete') {
+    if (busy !== null) return;
+    if (operation === 'complete' && row.scope.deliverable && typeof row.scope.deliverable.generatesService !== 'boolean') {
+      setError('La API no informa generatesService. Actualiza el backend y las rutinas antes de finalizar este entregable.'); return;
+    }
+    if (operation === 'complete' && row.scope.deliverable?.generatesService) { setModal({ kind: 'service', row }); return; }
     if (busy !== null || !window.confirm(operation === 'delete'
       ? `¿Desactivar "${row.scope.name}" solo en este requerimiento? Se conservarán el catálogo y las asignaciones.`
       : `¿Finalizar "${row.scope.name}" y su asignación vigente? Se registrará la finalización sin modificar las asignaciones inactivas.`)) return;
@@ -92,6 +95,9 @@ export function RequirementScopeLinksTable({ companyId, branchId, requirement }:
           onSaved={() => { setExpanded((current) => new Set(current).add(modal.row.id)); setModal(null); scopes.refresh(); }} />
       : modal.kind === 'state' ? <ScopeStateModal companyId={companyId} branchId={branchId} requirement={requirement} row={modal.row}
           otherProgress={scopes.items.find((v) => v.id !== modal.row.id && v.isActive && normalizedState(v.state.name) === 'en progreso')?.scope.name}
+          onCompleteService={() => setModal({ kind: 'service', row: modal.row })}
+          onClose={() => setModal(null)} onSaved={() => { setModal(null); scopes.refresh(); }} />
+      : modal.kind === 'service' ? <ServiceDeliverableModal companyId={companyId} branchId={branchId} requirement={requirement} row={modal.row}
           onClose={() => setModal(null)} onSaved={() => { setModal(null); scopes.refresh(); }} />
       : <ScopeLinkModal companyId={companyId} branchId={branchId} requirement={requirement} row={modal.row} kind={modal.kind}
           onClose={() => setModal(null)} onSaved={() => { setModal(null); scopes.refresh(); }} />, document.body)}
@@ -207,7 +213,8 @@ function AssignScopeModal({ companyId, branchId, requirement, row, onClose, onSa
   }
   return <ResourceModal open title={`Asignar colaborador · ${row.scope.name}`} dismissible={!saving} onClose={close}>
     <form className="modal-form" onSubmit={(event) => void submit(event)}>
-      <p className="muted">Solo puede existir una asignación activa por alcance. Cambiar de persona o rol envía la anterior al historial; reactivar conserva sus fechas y estado.</p>
+      <p className="muted">Solo puede existir una asignación activa por alcance. Cambiar de persona o rol envía la anterior al historial.
+        Asignar o reactivar cambia automáticamente el alcance y la persona a Asignado, conservando las fechas históricas.</p>
       {row.currentAssignment && <p className="muted">Responsable vigente: {collaboratorFullName(row.currentAssignment.collaborator)}.</p>}
       <SelectField label="Colaborador" required disabled={saving || loading} value={personId}
         options={eligiblePeople.map((v) => ({ value: v.id, label: `${v.code} · ${collaboratorFullName(v)}` }))} onChange={(e) => setPersonId(e.target.value)} />
@@ -221,8 +228,8 @@ function AssignScopeModal({ companyId, branchId, requirement, row, onClose, onSa
   </ResourceModal>;
 }
 
-function ScopeStateModal({ companyId, branchId, requirement, row, otherProgress, onClose, onSaved }: Context & {
-  row: RequirementScopeLink; otherProgress?: string; onClose: () => void; onSaved: () => void;
+function ScopeStateModal({ companyId, branchId, requirement, row, otherProgress, onClose, onSaved, onCompleteService }: Context & {
+  row: RequirementScopeLink; otherProgress?: string; onClose: () => void; onSaved: () => void; onCompleteService: () => void;
 }) {
   const [stateId, setStateId] = useState(String(row.state.id));
   const [saving, setSaving] = useState(false);
@@ -240,6 +247,12 @@ function ScopeStateModal({ companyId, branchId, requirement, row, otherProgress,
     }
     if (normalizedState(selectedState.name) === 'sin asignar' && row.currentAssignment
       && !window.confirm('La asignación vigente se desactivará y quedará en el historial. ¿Continuar?')) return;
+    if (normalizedState(selectedState.name) === 'finalizado' && row.scope.deliverable
+      && typeof row.scope.deliverable.generatesService !== 'boolean') {
+      setError('La API no informa generatesService. Actualiza el backend y las rutinas antes de finalizar este entregable.'); return;
+    }
+    if (normalizedState(selectedState.name) === 'finalizado' && normalizedState(row.state.name) !== 'finalizado'
+      && row.scope.deliverable?.generatesService) { onCompleteService(); return; }
     if (normalizedState(selectedState.name) === 'finalizado'
       && !window.confirm('Se finalizarán el alcance y únicamente su asignación vigente. ¿Continuar?')) return;
     setSaving(true); setError(null);
@@ -252,7 +265,8 @@ function ScopeStateModal({ companyId, branchId, requirement, row, otherProgress,
   }
   return <ResourceModal open title={`Cambiar estado · ${row.scope.name}`} dismissible={!saving} onClose={close}>
     <form className="modal-form" onSubmit={(event) => void submit(event)}>
-      <p className="muted">El estado pertenece a este alcance. La asignación vigente se sincroniza; el historial y el estado general del requerimiento no cambian.</p>
+      <p className="muted">El estado pertenece a este alcance y se sincroniza con la asignación vigente, conservando el historial.
+        El estado general del requerimiento se recalcula automáticamente.</p>
       <SelectField label="Estado del alcance" required disabled={saving || states.loading} value={stateId}
         options={states.items.map((v) => ({ value: v.id, label: formatStateName(v.name) }))} onChange={(e) => setStateId(e.target.value)} />
       {otherProgress && <p className="muted">Etapa En Progreso: {otherProgress}. Solo se permite una por requerimiento.</p>}

@@ -663,6 +663,7 @@ export function DeliverablesSection() {
     { key: 'name', label: 'Nombre', render: (item) => item.name },
     { key: 'description', label: 'Descripción', render: (item) => item.description },
     { key: 'sequence', label: 'Secuencia', render: (item) => item.sequence },
+    { key: 'service', label: 'Genera servicio', render: (item) => item.generatesService ? 'Sí' : 'No' },
     { key: 'active', label: 'Estado', render: (item) => <ActiveBadge active={item.isActive} /> },
   ];
   return (
@@ -677,11 +678,14 @@ export function DeliverablesSection() {
       filterFields={<>
         <SelectField label="Technology" value={technologyId ?? ''} options={optionsOf(technologies, (item) => item.name)} onChange={(event) => setTechnologyId(idOf(event.target.value))} disabled={!branchId} required />
       </>}
-      initialForm={{ name: '', description: '', sequence: 1 }}
+      initialForm={{ name: '', description: '', sequence: 1, generatesService: false }}
       renderFields={(form, setForm) => <>
         <Field label="Nombre" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
         <Field label="Descripción" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required />
         <Field label="Secuencia" type="number" min="1" value={form.sequence} onChange={(event) => setForm({ ...form, sequence: Number(event.target.value) })} required />
+        <SelectField label="Genera servicio al finalizar" required value={String(form.generatesService)}
+          options={[{ value: 'false', label: 'No' }, { value: 'true', label: 'Sí' }]}
+          onChange={(event) => setForm({ ...form, generatesService: event.target.value === 'true' })} />
       </>}
       create={(form) => companyId && branchId && technologyId ? companiesApi.createDeliverable(companyId, branchId, technologyId, form) : Promise.resolve(null)}
       onSaved={onSaved}
@@ -708,6 +712,7 @@ function DeliverableUpdateForm({ companyId, branchId, technologyId, deliverables
       description: item.description,
       sequence: item.sequence,
       isActive: item.isActive,
+      generatesService: item.generatesService,
     } : {});
   }
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -723,6 +728,9 @@ function DeliverableUpdateForm({ companyId, branchId, technologyId, deliverables
       <Field label="Nombre" value={form.name ?? ''} onChange={(event) => setForm({ ...form, name: event.target.value })} />
       <Field label="Descripción" value={form.description ?? ''} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       <Field label="Secuencia" type="number" min="1" value={form.sequence ?? ''} onChange={(event) => setForm({ ...form, sequence: Number(event.target.value) })} />
+      <SelectField label="Genera servicio al finalizar" value={form.generatesService === undefined ? '' : String(form.generatesService)}
+        options={[{ value: 'false', label: 'No' }, { value: 'true', label: 'Sí' }]}
+        onChange={(event) => setForm({ ...form, generatesService: event.target.value === 'true' })} />
       <SelectField label="Activo" value={form.isActive === undefined ? '' : String(form.isActive)} options={[{ value: 'true', label: 'Activo' }, { value: 'false', label: 'Inactivo' }]} onChange={(event) => setForm({ ...form, isActive: event.target.value === 'true' })} />
       <SubmitButton loading={action.loading} disabled={!companyId || !branchId || !technologyId || !deliverableId}>Actualizar</SubmitButton>
       {action.error && <span className="form-error">{action.error}</span>}

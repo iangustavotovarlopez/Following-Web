@@ -1,4 +1,5 @@
 import { HttpClient, httpClient, type PaginationQuery, type PageResponse } from '../../../../shared/api';
+import type { ServiceGroupCreateRequest, ServiceApplicationUnitCreateRequest } from '../../../services/infrastructure/api/services-api';
 
 export interface Reference { id: number; code?: string; name: string }
 export interface RequirementCatalog extends Reference { number?: number; isActive: boolean }
@@ -10,7 +11,7 @@ export interface Requirement {
 }
 export interface RequirementScope {
   id: number; name: string; description: string; sequence: number; isActive: boolean;
-  deliverable?: { id: number; name: string; technology: Reference };
+  deliverable?: { id: number; name: string; technology: Reference; generatesService: boolean };
 }
 export interface RequirementScopeLink {
   id: number; scope: RequirementScope; registeredDate: string; completionDate?: string;
@@ -30,7 +31,7 @@ export interface StaffingOption {
 }
 interface RequirementFields {
   description: string; registeredDate: string; completionDate?: string;
-  state: { id: number }; complexity: { id: number };
+  complexity: { id: number };
   scopes?: { id: number }[]; staffingAssignments?: { id: number }[];
 }
 export interface RequirementCreate extends RequirementFields { project?: { id: number }; service?: { id: number } }
@@ -38,6 +39,16 @@ export interface RequirementPatch extends Partial<RequirementFields> { service?:
 export interface ScopeCreate { name: string; description: string; sequence: number; deliverable?: { id: number } }
 export interface ScopePatch extends Partial<Omit<ScopeCreate, 'deliverable'>> { deliverable?: { id: number | null }; isActive?: boolean }
 export interface RequirementQuery extends PaginationQuery { projectId?: number; 'service.code'?: string; collaborator_id?: number }
+export interface RequirementBoardCard {
+  requirement: Requirement;
+  owners: { scopeLinkId: number; scope: NonNullable<Requirement['currentStage']>; state: RequirementCatalog; assignment: ScopeAssignment }[];
+}
+export type ServiceRegistration = { id: number } | {
+  code: string; name: string; registeredDate: string; lastUpdateDate?: string;
+  group: { id: number } | ServiceGroupCreateRequest;
+  applicationUnit: { id: number } | ServiceApplicationUnitCreateRequest;
+};
+export interface ServiceDeliverableCompletion { service: ServiceRegistration; metadata: { id: number }; deliverableUrl: string }
 
 export const requirementPath = (company: number, branch: number) => `/requirements/v0/companies/${company}/branches/${branch}/requirements`;
 const contextPath = (company: number, branch: number) => `/requirements/v0/companies/${company}/branches/${branch}`;
@@ -45,6 +56,18 @@ export class RequirementsApi {
   constructor(private readonly client: HttpClient = httpClient) {}
   list(company: number, branch: number, query: RequirementQuery = {}) {
     return this.client.get<PageResponse<Requirement>>(requirementPath(company, branch), query);
+  }
+  board(company: number, branch: number, query: RequirementQuery = {}) {
+    return this.client.get<PageResponse<RequirementBoardCard>>(`${requirementPath(company, branch)}/board`, query);
+  }
+  completeServiceDeliverable(company: number, branch: number, requirement: number, link: number, body: ServiceDeliverableCompletion) {
+    const affectedPaths = ['/services/v0/services'];
+    if ('id' in body.service) affectedPaths.push(`/services/v0/services/${body.service.id}/metadata`);
+    else {
+      if (!('id' in body.service.group)) affectedPaths.push('/services/v0/groups');
+      if (!('id' in body.service.applicationUnit)) affectedPaths.push('/services/v0/application_units');
+    }
+    return this.client.post<RequirementScopeLink>(`${requirementPath(company, branch)}/${requirement}/scopes/${link}/service_deliverable`, body, affectedPaths);
   }
   create(company: number, branch: number, body: RequirementCreate) {
     return this.client.post<Requirement>(requirementPath(company, branch), body);
