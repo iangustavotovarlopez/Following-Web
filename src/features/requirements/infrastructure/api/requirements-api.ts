@@ -6,6 +6,7 @@ export interface Requirement {
   id: number; project: Reference; description: string;
   registeredDate: string; completionDate?: string; state: RequirementCatalog;
   complexity: RequirementCatalog; service?: Reference; isActive: boolean;
+  currentStage?: { id: number; name: string; sequence: number };
 }
 export interface RequirementScope {
   id: number; name: string; description: string; sequence: number; isActive: boolean;
@@ -14,6 +15,14 @@ export interface RequirementScope {
 export interface RequirementScopeLink {
   id: number; scope: RequirementScope; registeredDate: string; completionDate?: string;
   deliverableUrl?: string; assignedCount: number;
+  isActive: boolean;
+  state: RequirementCatalog; currentAssignment?: ScopeAssignment;
+}
+export interface ScopeLinkPatch { registeredDate?: string; completionDate?: string; deliverableUrl?: string; isActive?: boolean }
+export interface ScopeAssignmentCreate { collaborator: { id: number }; role: { id: number } }
+export interface ScopeAssignment {
+  id: number; collaborator: StaffingOption['collaborator']; role: Reference; state: RequirementCatalog;
+  registeredDate: string; assignedDate: string; completionDate?: string; isActive: boolean;
 }
 export interface StaffingOption {
   id: number; staffingId: number; project: Reference; request: string; isActive: boolean; periodCode: string;
@@ -48,6 +57,28 @@ export class RequirementsApi {
   }
   scopes(company: number, branch: number, id: number, query: PaginationQuery = {}) {
     return this.client.get<PageResponse<RequirementScopeLink>>(`${requirementPath(company, branch)}/${id}/scopes`, query);
+  }
+  patchScopeLink(company: number, branch: number, requirement: number, link: number, body: ScopeLinkPatch) {
+    return this.client.patch<RequirementScopeLink>(`${requirementPath(company, branch)}/${requirement}/scopes/${link}`, body);
+  }
+  deleteScopeLink(company: number, branch: number, requirement: number, link: number) {
+    return this.client.delete(`${requirementPath(company, branch)}/${requirement}/scopes/${link}`);
+  }
+  completeScopeLink(company: number, branch: number, requirement: number, link: number) {
+    return this.client.post<RequirementScopeLink>(`${requirementPath(company, branch)}/${requirement}/scopes/${link}/complete`, {});
+  }
+  changeScopeState(company: number, branch: number, requirement: number, link: number, stateId: number) {
+    return this.client.patch<RequirementScopeLink>(`${requirementPath(company, branch)}/${requirement}/scopes/${link}/state`,
+      { state: { id: stateId } });
+  }
+  scopeStates(query: PaginationQuery & { isActive?: boolean } = {}) {
+    return this.client.get<PageResponse<RequirementCatalog>>('/requirements/v0/scope_states', query);
+  }
+  assignScope(company: number, branch: number, requirement: number, link: number, body: ScopeAssignmentCreate) {
+    return this.client.post<ScopeAssignment>(`${requirementPath(company, branch)}/${requirement}/scopes/${link}/assignments`, body);
+  }
+  scopeAssignments(company: number, branch: number, requirement: number, link: number, query: PaginationQuery = {}) {
+    return this.client.get<PageResponse<ScopeAssignment>>(`${requirementPath(company, branch)}/${requirement}/scopes/${link}/assignments`, query);
   }
   staffing(company: number, branch: number, id: number, query: PaginationQuery = {}) {
     return this.client.get<PageResponse<StaffingOption>>(`${requirementPath(company, branch)}/${id}/staffing_assignments`, query);

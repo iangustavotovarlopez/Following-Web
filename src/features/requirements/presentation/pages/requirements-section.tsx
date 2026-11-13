@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGlobalCompany } from '../../../../app/providers/company-context';
+import { API_MUTATION_EVENT, type ApiMutationDetail } from '../../../../shared/api';
 import { ActiveBadge, formatStateName, type TableColumn } from '../../../../shared/components/api-section';
 import { Field } from '../../../../shared/components/field';
 import { ManagementTable } from '../../../../shared/components/management-table';
@@ -10,10 +11,11 @@ import { projectsApi } from '../../../projects/infrastructure/api';
 import { collaboratorsApi } from '../../../collaborators/infrastructure/api';
 import { DeliverablesSection } from '../../../companies/presentation/pages/nested-resource-management';
 import { collaboratorFullName } from '../../../collaborators/presentation/collaborator-name';
-import { requirementPath, requirementsApi, type Requirement, type RequirementScopeLink, type StaffingOption } from '../../infrastructure/api/requirements-api';
+import { requirementPath, requirementsApi, type Requirement, type StaffingOption } from '../../infrastructure/api/requirements-api';
 import { useRequirementCatalog, useRequirementMounted } from '../use-requirement-catalog';
 import { RequirementModal } from './requirement-modal';
 import { RequirementScopesTab } from './requirement-scopes-tab';
+import { RequirementScopeLinksTable } from './requirement-scope-links-table';
 
 export function RequirementsSection() {
   const { selectedCompanyId: companyId, selectedBranchId: branchId } = useGlobalCompany();
@@ -62,6 +64,14 @@ function RequirementsTab({ companyId, branchId }: { companyId: number; branchId:
     (page) => projectsApi.listProjects({ 'company.id': companyId, page, pageSize: 100 }), ['/projects/v0/projects']);
   const people = useRequirementCatalog(`requirement-people:${companyId}`, true,
     (page) => collaboratorsApi.listCollaborators({ 'company.id': companyId, page, pageSize: 100 }), ['/collaborators/v0/collaborators']);
+  useEffect(() => {
+    function onScopeMutation(event: Event) {
+      const mutation = (event as CustomEvent<ApiMutationDetail>).detail.path;
+      if (mutation.startsWith(`${path}/`) && /^\d+\/scopes\/\d+(?:\/(?:complete|assignments|state))?$/.test(mutation.slice(path.length + 1))) list.refresh();
+    }
+    window.addEventListener(API_MUTATION_EVENT, onScopeMutation);
+    return () => window.removeEventListener(API_MUTATION_EVENT, onScopeMutation);
+  }, [path, list.refresh]);
 
   async function remove(item: Requirement) {
     if (deleting !== null || !window.confirm(`¿Deseas desactivar el requerimiento #${item.id}?`)) return;
@@ -74,6 +84,7 @@ function RequirementsTab({ companyId, branchId }: { companyId: number; branchId:
     { key: 'id', label: 'ID', render: (v) => v.id },
     { key: 'project', label: 'Proyecto', render: (v) => `${v.project.code} · ${v.project.name}` },
     { key: 'description', label: 'Descripción', render: (v) => v.description },
+    { key: 'current-stage', label: 'Etapa Actual', render: (v) => v.currentStage?.name || 'Sin etapa iniciada' },
     { key: 'service', label: 'Servicio', render: (v) => v.service ? `${v.service.code} · ${v.service.name}` : 'No relacionado' },
     { key: 'state', label: 'Estado', render: (v) => formatStateName(v.state.name) },
     { key: 'complexity', label: 'Complejidad', render: (v) => v.complexity.name },
@@ -118,20 +129,9 @@ function RequirementsTab({ companyId, branchId }: { companyId: number; branchId:
 
 function RequirementDetails({ requirement: r, companyId, branchId }: { requirement: Requirement; companyId: number; branchId: number }) {
   const path = requirementPath(companyId, branchId);
-  const scopes = useRequirementCatalog(`${path}/${r.id}/scopes`, true,
-    (page) => requirementsApi.scopes(companyId, branchId, r.id, { page, pageSize: 100 }), ['/requirements/v0/scopes']);
   const staffing = useRequirementCatalog(`${path}/${r.id}/staffing_assignments`, true,
     (page) => requirementsApi.staffing(companyId, branchId, r.id, { page, pageSize: 100 }),
     ['/staffing/v0/staffing', '/projects/v0/projects', '/collaborators/v0/collaborators']);
-  const columns: TableColumn<RequirementScopeLink>[] = [
-    { key: 'name', label: 'Alcance', render: (v) => v.scope.name },
-    { key: 'sequence', label: 'Secuencia', render: (v) => v.scope.sequence },
-    { key: 'active', label: 'Estado del alcance', render: (v) => <ActiveBadge active={v.scope.isActive} /> },
-    { key: 'people', label: 'Personas asignadas', render: (v) => v.assignedCount ? v.assignedCount : 'Sin asignación' },
-    { key: 'registered', label: 'Registro', render: (v) => v.registeredDate },
-    { key: 'completed', label: 'Finalización', render: (v) => v.completionDate || 'Pendiente' },
-    { key: 'deliverable', label: 'Entregable', render: (v) => v.scope.deliverable?.name || 'No relacionado' },
-  ];
   const staffingColumns: TableColumn<StaffingOption>[] = [
     { key: 'id', label: 'Asignación de staffing', render: (v) => v.id },
     { key: 'period', label: 'Periodo', render: (v) => v.periodCode },
@@ -140,11 +140,10 @@ function RequirementDetails({ requirement: r, companyId, branchId }: { requireme
     { key: 'active', label: 'Estado de asignación', render: (v) => <ActiveBadge active={v.isActive} /> },
   ];
   return <div className="team-inline-details" id={`requirement-${r.id}-details`}>
-    <section className="resource-section"><div className="section-heading"><h3>Alcances del requerimiento #{r.id}</h3>
-      {(scopes.error || staffing.error) && <button className="button secondary" type="button" onClick={() => { scopes.refresh(); staffing.refresh(); }}>Reintentar</button>}</div>
-      <ManagementTable columns={columns} rows={scopes.items} loading={scopes.loading} error={scopes.error}
-        rowKey={(v) => v.id} emptyMessage="Este requerimiento todavía no tiene alcances." />
-      <div className="section-heading"><h3>Historial de staffing</h3></div>
+    <section className="resource-section">
+      <RequirementScopeLinksTable companyId={companyId} branchId={branchId} requirement={r} />
+      <div className="section-heading"><h3>Historial de staffing</h3>
+        {staffing.error && <button className="button secondary" type="button" onClick={staffing.refresh}>Reintentar</button>}</div>
       <ManagementTable columns={staffingColumns} rows={staffing.items} loading={staffing.loading} error={staffing.error}
         rowKey={(v) => v.id} emptyMessage="Este requerimiento se creó con proyecto y todavía no tiene staffing relacionado." />
     </section></div>;

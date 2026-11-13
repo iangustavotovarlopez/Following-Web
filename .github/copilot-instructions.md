@@ -105,6 +105,21 @@ before changing it.
 - Show the existing technology-scoped deliverables management in Requirements
   -> Entregables, not Additional catalogs. Its Companies API ownership and
   global company/Branch context remain unchanged.
+- Actions in requirement scope rows edit/deactivate only that link, assign a
+  collaborator/active role, change its workflow state, finalize the link and
+  only its active personal assignment, and store its deliverableUrl.
+  Preserve personal/catalog history and null PATCH values. Render assignment
+  dates per person in the nested assignment list. Never send dates/state when
+  assigning: the backend generates dates and resolves the active initial state.
+  Reactivation preserves original dates/state; active duplicates fail.
+  Show currentAssignment's composed person name in Personas asignadas and
+  put assignment history in row Actions. Reassignment deactivates the prior
+  assignment atomically; only one assignment is active per scope link.
+  Load Sin Asignar/Asignado/En Progreso/Bloqueado/Finalizado from scope_states,
+  never fixed IDs. Sin Asignar releases the current person; other states
+  synchronize only that assignment. Only one scope may be En Progreso per
+  requirement. Show API currentStage (progress or last finalized sequence)
+  and refresh the root after scope mutations even without person filters.
 - Scopes and services are global catalogs by schema. Use company/Branch to
   select eligible scope deliverables; preserve historical references when
   editing other fields. Service {id:null} and deliverable {id:null} clear their

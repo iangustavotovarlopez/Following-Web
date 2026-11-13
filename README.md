@@ -198,6 +198,11 @@ listado usa compañía/Branch globales y filtros combinados por proyecto,
 (`requirement_assignments.collaborator_id` activo), no al staffing.
 La tabla siempre muestra el proyecto, además de descripción, servicio, estado,
 complejidad, fechas y actividad.
+**Etapa Actual** muestra el único alcance activo En Progreso o, si no hay
+ninguno, el último Finalizado por secuencia. Diseño Finalizado y Metadata
+Asignado siguen mostrando Diseño hasta iniciar Metadata. Sin etapas
+iniciadas muestra **Sin etapa iniciada**; no se calcula desde las fechas ni
+se cambia automáticamente el estado general del requerimiento.
 
 El alta permite marcar alcances mediante checkboxes y seleccionar varias
 asignaciones de staffing elegibles del contexto. Si se selecciona staffing,
@@ -216,6 +221,44 @@ El servicio puede quitarse. La fecha de finalización puede corregirse, pero
 el contrato PATCH actual no permite borrar una fecha existente con `null`.
 El icono de **Más detalles** despliega debajo de la fila los alcances, incluidos
 los que muestran **Sin asignación**, y el historial de staffing.
+
+Cada fila de **Alcances del requerimiento** incluye editar, eliminar,
+asignar colaborador, cambiar estado, marcar como finalizado, guardar la URL
+del entregable y **Ver historial de asignaciones**, este último en Acciones.
+**Personas asignadas** muestra el nombre compuesto del responsable vigente,
+no un contador ni un botón. Sin responsable muestra Sin asignación.
+Editar corrige fechas, URL y actividad solo del vínculo, sin renombrar el
+scope global. Eliminar solicita confirmación y desactiva únicamente el
+vínculo, conservando catálogo y asignaciones. Los inactivos se pueden
+consultar y reactivar desde edición si sus padres siguen siendo elegibles.
+Finalizar cambia a Finalizado el alcance y solo su asignación personal
+activa, registra ambas finalizaciones internamente cuando no existen y
+conserva las fechas ya registradas. El responsable finalizado sigue activo;
+el historial inactivo no cambia.
+Guardar entregable registra `requirements_requirement_scopes.deliverable_url`
+mediante `deliverableUrl`; acepta URL HTTP/HTTPS de hasta 2048 caracteres.
+La tabla ofrece **Abrir entregable**. Omitir fechas o URL en PATCH las
+conserva; el formulario no presenta `null` como borrado.
+
+Asignar muestra colaboradores no inactivos de la compañía y roles activos.
+Solo envía referencias de colaborador/rol: el servidor registra internamente
+la fecha y resuelve Asignado desde su catálogo, sin ID fijo; una persona
+nueva de un alcance En Progreso/Bloqueado hereda ese estado.
+Se rechaza el duplicado activo; reactivar una asignación inactiva conserva
+ID, fechas y estado. Solo puede existir una asignación activa por alcance:
+reasignar desactiva la anterior en la misma transacción. **Ver historial de
+asignaciones** despliega las personas, roles,
+estados, fecha de asignación (`assignedDate`), registro y finalización,
+incluida historia inactiva. La fecha pertenece a cada asignación, no al
+alcance entero. No se crean relaciones de rol/tecnología ni se exige staffing.
+**Cambiar estado** obtiene Sin Asignar, Asignado, En Progreso, Bloqueado y
+Finalizado del catálogo del servidor, sin IDs fijos. Sin Asignar requiere
+confirmación para enviar al historial al responsable vigente; los demás
+estados sincronizan solo esa asignación. Se impide iniciar un segundo
+alcance En Progreso mientras otro lo esté; no se modifica el anterior.
+Las acciones refrescan el detalle y la Etapa Actual del listado raíz,
+también cuando no existe filtro por persona. El API y las rutinas deben
+desplegarse junto con estos contratos nuevos.
 
 **Requirements → Scopes** administra el catálogo global `requirement_scopes`,
 con filtro por nombre, **Nuevo +**, edición y baja lógica confirmada.
@@ -246,6 +289,9 @@ Los endpoints y ambos V1 del backend deben estar instalados antes de usar el
 flujo. Para datos existentes, el antiguo FK directo de staffing debe copiarse
 a `requirements_staffing_assignments` y derivarse compañía/Branch/proyecto
 antes de eliminarlo; modificar V1 no actualiza automáticamente la base.
+El servidor también debe tener las columnas `is_active` del vínculo y
+`assigned_date` de la asignación, con backfill histórico explícito si ya hay
+datos; no rellenar fechas antiguas con el día del despliegue.
 Android todavía no tiene interfaz de Requirements y sus contratos actuales no
 cambian; estas operaciones son aditivas.
 
