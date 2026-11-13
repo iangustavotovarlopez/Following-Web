@@ -16,7 +16,7 @@ export interface StaffingStateReference extends StaffingReference {
 
 export interface StaffingQuery extends PaginationQuery {
   companyId?: number;
-  branchId?: number;
+  projectId?: number;
   periodId?: number;
   subperiodId?: number;
   sectionId?: number;
@@ -40,42 +40,36 @@ export interface CreateStaffingRequest {
   subperiod: StaffingReference;
   section: StaffingReference;
   fraction: StaffingReference;
+  project: StaffingReference;
   speciality: StaffingReference;
+  request: string;
   state: StaffingReference;
   registeredDate: string;
 }
 
-export interface StaffingCatalogReference extends StaffingReference {
-  code?: string;
-  name: string;
-  isActive: boolean;
-}
-
-export interface Staffing {
+export interface Staffing extends Omit<CreateStaffingRequest, 'state'> {
   id: number;
-  company: { id: number; code: string; name: string };
-  branch: { id: number; name: string; isActive: boolean };
-  period: StaffingCatalogReference;
-  subperiod: StaffingCatalogReference;
-  section: StaffingCatalogReference;
-  fraction: StaffingCatalogReference;
-  speciality: StaffingCatalogReference;
+  project: StaffingNamedReference & { company?: StaffingReference };
+  period: StaffingNamedReference;
+  subperiod: StaffingNamedReference;
+  section: StaffingNamedReference;
+  fraction: StaffingNamedReference;
+  speciality: StaffingNamedReference;
   staffingState: StaffingStateReference;
-  registeredDate: string;
   isActive: boolean;
 }
 
-export interface StaffingAssignmentType {
-  id: number;
-  name: string;
-  capacity: number;
-  isActive: boolean;
+export interface StaffingNamedReference extends StaffingReference {
+  code?: string;
+  name?: string;
+  isActive?: boolean;
 }
+
+export interface AssignmentType extends StaffingStateReference { capacity: number }
 
 export interface StaffingAssignment {
   id: number;
-  collaborator: {
-    id: number;
+  collaborator: StaffingReference & {
     code: string;
     name: string;
     secondName?: string;
@@ -85,32 +79,23 @@ export interface StaffingAssignment {
     thirdLastname?: string;
     state: StaffingStateReference;
   };
-  project: { id: number; code: string; name: string; company: StaffingReference };
-  technology: { id: number; code: string; name: string; isActive: boolean; branch: { id: number; name: string } };
-  assignmentType: StaffingAssignmentType;
-  role: { id: number; code: string; name: string; isActive: boolean };
-  request: string;
+  assignmentType: AssignmentType;
+  role: StaffingStateReference & { code?: string };
   capacity: number;
   isActive: boolean;
 }
 
-export interface StaffingAssignmentQuery extends PaginationQuery {
-  projectId?: number;
-  technologyId?: number;
-  includeInactive?: boolean;
-}
-
 export interface CreateStaffingAssignmentRequest {
   collaborator: StaffingReference;
-  project: StaffingReference;
-  technology: StaffingReference;
   assignmentType: StaffingReference;
   role: StaffingReference;
-  request: string;
   capacity: number;
 }
 
-export interface PatchStaffingAssignmentRequest extends Partial<Omit<CreateStaffingAssignmentRequest, 'collaborator'>> {
+export interface PatchStaffingAssignmentRequest {
+  assignmentType?: StaffingReference;
+  role?: StaffingReference;
+  capacity?: number;
   isActive?: boolean;
 }
 
@@ -129,11 +114,11 @@ export class StaffingApi {
     return this.client.post<Staffing>('/staffing/v0/staffing', body);
   }
 
-  listAssignmentTypes(query: PaginationQuery & { isActive?: boolean } = {}) {
-    return this.client.get<PageResponse<StaffingAssignmentType>>('/staffing/v0/assignment_types', query);
+  listAssignmentTypes(query: StaffingStateQuery = {}) {
+    return this.client.get<PageResponse<AssignmentType>>('/staffing/v0/assignment_types', query);
   }
 
-  listAssignments(staffingId: number, query: StaffingAssignmentQuery = {}) {
+  listAssignments(staffingId: number, query: PaginationQuery & { includeInactive?: boolean } = {}) {
     return this.client.get<PageResponse<StaffingAssignment>>(`/staffing/v0/staffing/${staffingId}/assignments`, query);
   }
 
